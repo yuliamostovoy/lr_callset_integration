@@ -430,11 +430,6 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_BuildTrainingResource.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage2.wdl
-  testParameterFiles:
 - name: SV_Integration_Workpackage3
   subclass: wdl
   publish: True
@@ -510,11 +505,6 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_Workpackage9.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage10
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage10.wdl
-  testParameterFiles:
 - name: SV_Integration_Workpackage11
   subclass: wdl
   publish: True
@@ -529,11 +519,6 @@ workflows:
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_PlotHwe_SNVs.wdl
-  testParameterFiles:
-- name: SV_Integration_RegenotypingAnalysis2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_RegenotypingAnalysis2.wdl
   testParameterFiles:
 - name: SV_Integration_Workpackage12
   subclass: wdl
