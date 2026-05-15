@@ -10,6 +10,7 @@ version 1.0
 workflow SV_Integration_Workpackage1 {
     input {
         File sv_integration_chunk_tsv
+        Boolean has_pav = true
         String region = "all"
         String remote_outdir
         
@@ -34,6 +35,7 @@ workflow SV_Integration_Workpackage1 {
     }
     parameter_meta {
         sv_integration_chunk_tsv: "A subset of the rows of table `sv_integration_hg38`, without the header."
+        has_pav: "If false, skip PAV localization/canonization and merge only pbsv and Sniffles calls. The output schema still includes SUPP_PAV, set to zero."
         region: "Only consider VCF records in this genomic region. Set to 'all' to disable."
         remote_outdir: "Without final slash. Where the output of intra-sample truvari and kanpig is stored for each sample."
         max_sv_length: "Calls above this length are deemed 'ultralong', are not given to kanpig re-genotyping, and are processed separately."
@@ -45,6 +47,7 @@ workflow SV_Integration_Workpackage1 {
     call Impl {
         input:
             sv_integration_chunk_tsv = sv_integration_chunk_tsv,
+            has_pav = has_pav,
             region = region,
             remote_outdir = remote_outdir,
             
@@ -111,6 +114,7 @@ workflow SV_Integration_Workpackage1 {
 task Impl {
     input {
         File sv_integration_chunk_tsv
+        Boolean has_pav
         String region
         String remote_outdir
         
@@ -152,6 +156,7 @@ task Impl {
         EFFECTIVE_RAM_GB=$(( ~{ram_size_gb} - 1 ))
         export BCFTOOLS_PLUGINS="~{docker_dir}/bcftools-1.22/plugins"
         export RUST_BACKTRACE="full"
+        HAS_PAV="~{has_pav}"
         
         
         
@@ -180,6 +185,15 @@ task Impl {
             local PBSV_VCF_GZ=$(echo ${LINE} | cut -d , -f 9)
             local SNIFFLES_TBI=$(echo ${LINE} | cut -d , -f 10)
             local SNIFFLES_VCF_GZ=$(echo ${LINE} | cut -d , -f 11)
+            if [ ${HAS_PAV} = "false" ]; then
+                local N_FIELDS=$(echo ${LINE} | awk -F ',' '{ print NF }')
+                if [ ${N_FIELDS} -lt 11 ]; then
+                    PBSV_TBI=$(echo ${LINE} | cut -d , -f 5)
+                    PBSV_VCF_GZ=$(echo ${LINE} | cut -d , -f 6)
+                    SNIFFLES_TBI=$(echo ${LINE} | cut -d , -f 7)
+                    SNIFFLES_VCF_GZ=$(echo ${LINE} | cut -d , -f 8)
+                fi
+            fi
             
             if [ ${MODE} -eq 2 ]; then
                 date 1>&2
@@ -187,8 +201,10 @@ task Impl {
                 date 1>&2
                 gcloud storage cp ${ALIGNED_BAI} ./${SAMPLE_ID}_aligned.bam.bai
             else
-                gcloud storage cp ${PAV_VCF_GZ} ./${SAMPLE_ID}_pav.vcf.gz
-                gcloud storage cp ${PAV_TBI} ./${SAMPLE_ID}_pav.vcf.gz.tbi
+                if [ ${HAS_PAV} = "true" ]; then
+                    gcloud storage cp ${PAV_VCF_GZ} ./${SAMPLE_ID}_pav.vcf.gz
+                    gcloud storage cp ${PAV_TBI} ./${SAMPLE_ID}_pav.vcf.gz.tbi
+                fi
                 gcloud storage cp ${PBSV_VCF_GZ} ./${SAMPLE_ID}_pbsv.vcf.gz
                 gcloud storage cp ${PBSV_TBI} ./${SAMPLE_ID}_pbsv.vcf.gz.tbi
                 gcloud storage cp ${SNIFFLES_VCF_GZ} ./${SAMPLE_ID}_sniffles.vcf.gz
@@ -432,7 +448,11 @@ task Impl {
             
             # Remark: the order of the callers in `bcftools merge` affects the
             # value of the SAMPLE column emitted by `truvari collapse --intra`.
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type z ${SAMPLE_ID}_pav_sv.vcf.gz ${SAMPLE_ID}_pbsv_sv.vcf.gz ${SAMPLE_ID}_sniffles_sv.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            if [ ${HAS_PAV} = "true" ]; then
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type z ${SAMPLE_ID}_pav_sv.vcf.gz ${SAMPLE_ID}_pbsv_sv.vcf.gz ${SAMPLE_ID}_sniffles_sv.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            else
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type z ${SAMPLE_ID}_pbsv_sv.vcf.gz ${SAMPLE_ID}_sniffles_sv.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            fi
             rm -f ${SAMPLE_ID}_*_sv.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_in.vcf
             
             ${TIME_COMMAND} bcftools norm --threads ${N_THREADS} --multiallelics -any --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_out.vcf.gz
@@ -476,7 +496,11 @@ task Impl {
             
             # Remark: the order of the callers in `bcftools merge` affects the
             # value of the SAMPLE column emitted by `truvari collapse --intra`.
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pav_ultralong.vcf.gz ${SAMPLE_ID}_pbsv_ultralong.vcf.gz ${SAMPLE_ID}_sniffles_ultralong.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            if [ ${HAS_PAV} = "true" ]; then
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pav_ultralong.vcf.gz ${SAMPLE_ID}_pbsv_ultralong.vcf.gz ${SAMPLE_ID}_sniffles_ultralong.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            else
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pbsv_ultralong.vcf.gz ${SAMPLE_ID}_sniffles_ultralong.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            fi
             rm -f ${SAMPLE_ID}_*_ultralong.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_in.vcf
             
             ${TIME_COMMAND} bcftools norm --threads ${N_THREADS} --multiallelics -any --output-type v ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_out.vcf
@@ -536,7 +560,11 @@ task Impl {
             
             # Remark: the order of the callers in `bcftools merge` affects the
             # value of the SAMPLE column emitted by `truvari collapse --intra`.
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pav_bnd.vcf.gz ${SAMPLE_ID}_pbsv_bnd.vcf.gz ${SAMPLE_ID}_sniffles_bnd.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            if [ ${HAS_PAV} = "true" ]; then
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pav_bnd.vcf.gz ${SAMPLE_ID}_pbsv_bnd.vcf.gz ${SAMPLE_ID}_sniffles_bnd.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            else
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_pbsv_bnd.vcf.gz ${SAMPLE_ID}_sniffles_bnd.vcf.gz --output ${SAMPLE_ID}_out.vcf
+            fi
             rm -f ${SAMPLE_ID}_*_bnd.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_in.vcf
             
             ${TIME_COMMAND} bcftools norm --threads ${N_THREADS} --multiallelics -any --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_out.vcf.gz
@@ -572,19 +600,31 @@ task Impl {
             local OUTPUT_FORMAT=$3
             local OUTPUT_VCF_GZ=$4
             
-            bcftools query --format '%CHROM\t%POS\t%ID\t[%SUPP]\n' ${INPUT_VCF_GZ} | awk 'BEGIN { FS="\t"; OFS="\t"; } { \
-                printf("%s",$1); \
-                for (i=2; i<=NF-1; i++) printf("\t%s",$i); \
-                if ($4=="0") printf("\t0\t0\t0");
-                else if ($4=="1") printf("\t0\t0\t1");
-                else if ($4=="2") printf("\t0\t1\t0");
-                else if ($4=="3") printf("\t0\t1\t1");
-                else if ($4=="4") printf("\t1\t0\t0");
-                else if ($4=="5") printf("\t1\t0\t1");
-                else if ($4=="6") printf("\t1\t1\t0");
-                else if ($4=="7") printf("\t1\t1\t1");
-                printf("\n"); \
-            }' | bgzip -c > ${SAMPLE_ID}_annotations.tsv.gz
+            if [ ${HAS_PAV} = "true" ]; then
+                bcftools query --format '%CHROM\t%POS\t%ID\t[%SUPP]\n' ${INPUT_VCF_GZ} | awk 'BEGIN { FS="\t"; OFS="\t"; } { \
+                    printf("%s",$1); \
+                    for (i=2; i<=NF-1; i++) printf("\t%s",$i); \
+                    if ($4=="0") printf("\t0\t0\t0");
+                    else if ($4=="1") printf("\t0\t0\t1");
+                    else if ($4=="2") printf("\t0\t1\t0");
+                    else if ($4=="3") printf("\t0\t1\t1");
+                    else if ($4=="4") printf("\t1\t0\t0");
+                    else if ($4=="5") printf("\t1\t0\t1");
+                    else if ($4=="6") printf("\t1\t1\t0");
+                    else if ($4=="7") printf("\t1\t1\t1");
+                    printf("\n"); \
+                }' | bgzip -c > ${SAMPLE_ID}_annotations.tsv.gz
+            else
+                bcftools query --format '%CHROM\t%POS\t%ID\t[%SUPP]\n' ${INPUT_VCF_GZ} | awk 'BEGIN { FS="\t"; OFS="\t"; } { \
+                    printf("%s",$1); \
+                    for (i=2; i<=NF-1; i++) printf("\t%s",$i); \
+                    if ($4=="0") printf("\t0\t0\t0");
+                    else if ($4=="1") printf("\t1\t0\t0");
+                    else if ($4=="2") printf("\t0\t1\t0");
+                    else if ($4=="3") printf("\t1\t1\t0");
+                    printf("\n"); \
+                }' | bgzip -c > ${SAMPLE_ID}_annotations.tsv.gz
+            fi
             tabix -@ ${N_THREADS} -f -s1 -b2 -e2 ${SAMPLE_ID}_annotations.tsv.gz
             echo '##INFO=<ID=SUPP_PAV,Number=1,Type=Integer,Description="Supported by pav">' > ${SAMPLE_ID}_header.txt
             echo '##INFO=<ID=SUPP_SNIFFLES,Number=1,Type=Integer,Description="Supported by sniffles">' >> ${SAMPLE_ID}_header.txt
@@ -800,7 +840,9 @@ END
             
             # Merging
             LocalizeSample ${SAMPLE_ID} 1 ${LINE}
-            CanonizeVcf ${SAMPLE_ID}_pav.vcf.gz ${SAMPLE_ID}_pav.vcf.gz.tbi ${SAMPLE_ID} pav ~{min_sv_length} ~{max_sv_length} ~{standard_chromosomes_bed} not_gaps.bed
+            if [ ${HAS_PAV} = "true" ]; then
+                CanonizeVcf ${SAMPLE_ID}_pav.vcf.gz ${SAMPLE_ID}_pav.vcf.gz.tbi ${SAMPLE_ID} pav ~{min_sv_length} ~{max_sv_length} ~{standard_chromosomes_bed} not_gaps.bed
+            fi
             CanonizeVcf ${SAMPLE_ID}_pbsv.vcf.gz ${SAMPLE_ID}_pbsv.vcf.gz.tbi ${SAMPLE_ID} pbsv ~{min_sv_length} ~{max_sv_length} ~{standard_chromosomes_bed} not_gaps.bed
             CanonizeVcf ${SAMPLE_ID}_sniffles.vcf.gz ${SAMPLE_ID}_sniffles.vcf.gz.tbi ${SAMPLE_ID} sniffles ~{min_sv_length} ~{max_sv_length} ~{standard_chromosomes_bed} not_gaps.bed
             IntrasampleMerge_sv ${SAMPLE_ID}
