@@ -1,15 +1,15 @@
 version 1.0
 
 
-# Given a single-sample VCF, the program scores it with XGBoost, filters it by
-# score, and then splits it into ~100 pieces, in order to run bcftools merge
+# Given a single-sample VCF, the program scores it with XGBoost, retains all
+# variants, and then splits it into ~100 pieces, in order to run bcftools merge
 # over all samples on parallel chunks.
 #
 workflow SV_Integration_Workpackage3 {
     input {
         File sv_integration_chunk_tsv
         File split_for_bcftools_merge_csv
-        String filter_string = "FORMAT/CALIBRATION_SENSITIVITY<=0.999"
+        String filter_string = "none"
         
         String remote_indir
         String remote_outdir
@@ -25,7 +25,7 @@ workflow SV_Integration_Workpackage3 {
     }
     parameter_meta {
         split_for_bcftools_merge_csv: "A partition that covers all chromosomes. Every line is a 0-based, half-open, consecutive chunk of a chromosome. Lines are assumed to be sorted."
-        filter_string: "Use `none` to apply no filter."
+        filter_string: "Deprecated; variants are scored but no score filter is applied."
         remote_indir: "Without final slash"
         remote_outdir: "Without final slash"
         training_resource_bed: "The same BED used in `SV_Integration_Workpackage1`."
@@ -196,7 +196,7 @@ task Impl {
                 echo "${N_RECORDS_AFTER_FILTERING},${N_RECORDS_BEFORE_FILTERING},${PERCENT},Number of records with CALIBRATION_SENSITIVITY<=${THRESHOLD}" >> ${SAMPLE_ID}_xgboost.csv
             done
             if [ "~{filter_string}" != "none" ]; then
-                local N_RECORDS_AFTER_FILTERING=$( bcftools query --format '%ID'--include "~{filter_string}" ${INPUT_BCF} | wc -l )
+                local N_RECORDS_AFTER_FILTERING=$( bcftools query --format '%ID' --include "~{filter_string}" ${INPUT_BCF} | wc -l )
                 local PERCENT=$( echo "scale=2; 100 * ${N_RECORDS_AFTER_FILTERING} / ${N_RECORDS_BEFORE_FILTERING}" | bc )
                 echo "${N_RECORDS_AFTER_FILTERING},${N_RECORDS_BEFORE_FILTERING},${PERCENT},Number of records that pass the specified filter" >> ${SAMPLE_ID}_xgboost.csv
             fi
@@ -213,13 +213,9 @@ task Impl {
             local INTERVAL
             while read -u 4 INTERVAL; do
                 echo ${INTERVAL} | tr ',' '\t' > ${SAMPLE_ID}.bed
-                if [ "~{filter_string}" != "none" ]; then
-                    # Remark: we use `targets` rather than `regions` because
-                    # the former considers just the POS coordinate for overlaps.
-                    bcftools view --threads ${N_THREADS} --include "~{filter_string}" --targets-file ${SAMPLE_ID}.bed --output-type b ${INPUT_BCF} --output ${SAMPLE_ID}_chunk_${i}.bcf
-                else
-                    bcftools view --threads ${N_THREADS}                              --targets-file ${SAMPLE_ID}.bed --output-type b ${INPUT_BCF} --output ${SAMPLE_ID}_chunk_${i}.bcf
-                fi
+                # Remark: we use `targets` rather than `regions` because
+                # the former considers just the POS coordinate for overlaps.
+                bcftools view --threads ${N_THREADS} --targets-file ${SAMPLE_ID}.bed --output-type b ${INPUT_BCF} --output ${SAMPLE_ID}_chunk_${i}.bcf
                 bcftools index --threads ${N_THREADS} ${SAMPLE_ID}_chunk_${i}.bcf
                 gsutil mv ${SAMPLE_ID}_chunk_${i}.bcf ~{remote_outdir}/chunk_${i}/${SAMPLE_ID}.bcf
                 gsutil mv ${SAMPLE_ID}_chunk_${i}.bcf.csi ~{remote_outdir}/chunk_${i}/${SAMPLE_ID}.bcf.csi
