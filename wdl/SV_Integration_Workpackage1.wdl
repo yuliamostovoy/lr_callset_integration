@@ -13,6 +13,7 @@ workflow SV_Integration_Workpackage1 {
         Boolean has_pav = true
         String region = "all"
         String remote_outdir
+        String requester_pays_project = ""
         
         Int min_sv_length = 20
         Int max_sv_length = 10000
@@ -38,6 +39,7 @@ workflow SV_Integration_Workpackage1 {
         has_pav: "If false, skip PAV localization/canonization and merge only pbsv and Sniffles calls. The output schema still includes SUPP_PAV, set to zero."
         region: "Only consider VCF records in this genomic region. Set to 'all' to disable."
         remote_outdir: "Without final slash. Where the output of intra-sample truvari and kanpig is stored for each sample."
+        requester_pays_project: "Google Cloud project to bill for requester-pays buckets. Leave blank for non-requester-pays buckets."
         max_sv_length: "Calls above this length are deemed 'ultralong', are not given to kanpig re-genotyping, and are processed separately."
         ultralong_collapse_mode: "0=do not use sequence similarity in truvari collapse; 1=use sequence similarity in truvari collapse."
         training_resource_vcf_gz: "We assume that the training resource VCF has already been subset to the correct length range upstream."
@@ -50,6 +52,7 @@ workflow SV_Integration_Workpackage1 {
             has_pav = has_pav,
             region = region,
             remote_outdir = remote_outdir,
+            requester_pays_project = requester_pays_project,
             
             min_sv_length = min_sv_length,
             max_sv_length = max_sv_length,
@@ -117,6 +120,7 @@ task Impl {
         Boolean has_pav
         String region
         String remote_outdir
+        String requester_pays_project
         
         Int min_sv_length
         Int max_sv_length
@@ -157,6 +161,10 @@ task Impl {
         export BCFTOOLS_PLUGINS="~{docker_dir}/bcftools-1.22/plugins"
         export RUST_BACKTRACE="full"
         HAS_PAV="~{has_pav}"
+        GCLOUD_STORAGE_BILLING_FLAGS=""
+        if [ -n "~{requester_pays_project}" ]; then
+            GCLOUD_STORAGE_BILLING_FLAGS="--billing-project=~{requester_pays_project}"
+        fi
         
         
         
@@ -197,18 +205,18 @@ task Impl {
             
             if [ ${MODE} -eq 2 ]; then
                 date 1>&2
-                gcloud storage cp ${ALIGNED_BAM} ./${SAMPLE_ID}_aligned.bam
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${ALIGNED_BAM} ./${SAMPLE_ID}_aligned.bam
                 date 1>&2
-                gcloud storage cp ${ALIGNED_BAI} ./${SAMPLE_ID}_aligned.bam.bai
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${ALIGNED_BAI} ./${SAMPLE_ID}_aligned.bam.bai
             else
                 if [ ${HAS_PAV} = "true" ]; then
-                    gcloud storage cp ${PAV_VCF_GZ} ./${SAMPLE_ID}_pav.vcf.gz
-                    gcloud storage cp ${PAV_TBI} ./${SAMPLE_ID}_pav.vcf.gz.tbi
+                    gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${PAV_VCF_GZ} ./${SAMPLE_ID}_pav.vcf.gz
+                    gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${PAV_TBI} ./${SAMPLE_ID}_pav.vcf.gz.tbi
                 fi
-                gcloud storage cp ${PBSV_VCF_GZ} ./${SAMPLE_ID}_pbsv.vcf.gz
-                gcloud storage cp ${PBSV_TBI} ./${SAMPLE_ID}_pbsv.vcf.gz.tbi
-                gcloud storage cp ${SNIFFLES_VCF_GZ} ./${SAMPLE_ID}_sniffles.vcf.gz
-                gcloud storage cp ${SNIFFLES_TBI} ./${SAMPLE_ID}_sniffles.vcf.gz.tbi
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${PBSV_VCF_GZ} ./${SAMPLE_ID}_pbsv.vcf.gz
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${PBSV_TBI} ./${SAMPLE_ID}_pbsv.vcf.gz.tbi
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${SNIFFLES_VCF_GZ} ./${SAMPLE_ID}_sniffles.vcf.gz
+                gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} ${SNIFFLES_TBI} ./${SAMPLE_ID}_sniffles.vcf.gz.tbi
             fi
         }
         
@@ -833,7 +841,7 @@ END
             SEX=$(echo ${LINE} | cut -d , -f 2)
             
             # Skipping the sample if it has already been processed
-            TEST=$( gsutil ls ~{remote_outdir}/${SAMPLE_ID}.done || echo "0" )
+            TEST=$( gcloud storage ls ${GCLOUD_STORAGE_BILLING_FLAGS} ~{remote_outdir}/${SAMPLE_ID}.done || echo "0" )
             if [ ${TEST} != "0" ]; then
                 continue
             fi
@@ -868,9 +876,9 @@ END
             mv ${SAMPLE_ID}_ultralong_supp.bcf.csi ${SAMPLE_ID}_ultralong.bcf.csi
             
             # Uploading
-            gcloud storage mv ${SAMPLE_ID}_kanpig.vcf.'gz*' ${SAMPLE_ID}_kanpig.bed.gz ${SAMPLE_ID}_kanpig.csv ${SAMPLE_ID}_training.vcf.'gz*' ${SAMPLE_ID}_ultralong.'bcf*' ${SAMPLE_ID}_bnd.'bcf*' ~{remote_outdir}/
+            gcloud storage mv ${GCLOUD_STORAGE_BILLING_FLAGS} ${SAMPLE_ID}_kanpig.vcf.'gz*' ${SAMPLE_ID}_kanpig.bed.gz ${SAMPLE_ID}_kanpig.csv ${SAMPLE_ID}_training.vcf.'gz*' ${SAMPLE_ID}_ultralong.'bcf*' ${SAMPLE_ID}_bnd.'bcf*' ~{remote_outdir}/
             touch ${SAMPLE_ID}.done
-            gcloud storage mv ${SAMPLE_ID}.done ~{remote_outdir}/
+            gcloud storage mv ${GCLOUD_STORAGE_BILLING_FLAGS} ${SAMPLE_ID}.done ~{remote_outdir}/
             DelocalizeSample ${SAMPLE_ID}
             ls -laht
         done 3< chunk.csv
