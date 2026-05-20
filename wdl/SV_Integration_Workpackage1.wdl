@@ -317,6 +317,12 @@ task Impl {
             ${TIME_COMMAND} bcftools filter --regions-file ${NOT_GAPS_BED} --regions-overlap pos --output-type v ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz --output ${SAMPLE_ID}_${CALLER_ID}_out.vcf
             rm -f ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz* ; mv ${SAMPLE_ID}_${CALLER_ID}_out.vcf ${SAMPLE_ID}_${CALLER_ID}_in.vcf
             
+            # Removing uncalled ALT alleles before SVLEN is treated as Number=A.
+            # This prevents malformed multiallelic records with too few SVLEN
+            # values from crashing bcftools norm.
+            ${TIME_COMMAND} bcftools view --output-type u --min-ac 1 --trim-alt-alleles ${SAMPLE_ID}_${CALLER_ID}_in.vcf | bcftools +fill-tags --output-type v --output ${SAMPLE_ID}_${CALLER_ID}_out.vcf -- -t AC,AN
+            rm -f ${SAMPLE_ID}_${CALLER_ID}_in.vcf ; mv ${SAMPLE_ID}_${CALLER_ID}_out.vcf ${SAMPLE_ID}_${CALLER_ID}_in.vcf
+            
             # Ensuring that SVLEN has the correct type for bcftools norm
             bcftools view --header-only ${SAMPLE_ID}_${CALLER_ID}_in.vcf | sed 's/ID=SVLEN,Number=.,/ID=SVLEN,Number=A,/g' > ${SAMPLE_ID}_${CALLER_ID}_header.txt
             ${TIME_COMMAND} bcftools reheader --header ${SAMPLE_ID}_${CALLER_ID}_header.txt --output ${SAMPLE_ID}_${CALLER_ID}_out.vcf ${SAMPLE_ID}_${CALLER_ID}_in.vcf
