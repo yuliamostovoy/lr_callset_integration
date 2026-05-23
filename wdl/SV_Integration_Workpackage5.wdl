@@ -7,21 +7,8 @@ workflow SV_Integration_Workpackage5 {
     input {
         Int chunk_id
         File sample_ids
-        Array[String] bi_samples_to_prefer_over_ha
         
-        String remote_indir_bi
-        String remote_indir_ha
-        String remote_indir_bcm
-        String remote_indir_uw
-        String remote_indir_controls_15x
-        String remote_indir_controls_30x
-        
-        Int n_expected_samples_bi
-        Int n_expected_samples_ha
-        Int n_expected_samples_bcm
-        Int n_expected_samples_uw
-        Int n_expected_samples_controls_15x
-        Int n_expected_samples_controls_30x
+        String remote_indir
         
         Int merge_mode
         String remote_outdir
@@ -30,7 +17,7 @@ workflow SV_Integration_Workpackage5 {
     }
     parameter_meta {
         sample_ids: "Speficies the order of the samples to use in bcftools merge."
-        remote_indir_bi: "Without final slash"
+        remote_indir: "Without final slash"
         remote_outdir: "Without final slash"
         merge_mode: "1: standard bcftools merge (CHROM,POS,REF,ALT). 2: bcftools merge by ID only."
     }
@@ -39,21 +26,7 @@ workflow SV_Integration_Workpackage5 {
         input:
             chunk_id = chunk_id,
             sample_ids = sample_ids,
-            bi_samples_to_prefer_over_ha = bi_samples_to_prefer_over_ha,
-            
-            remote_indir_bi = remote_indir_bi,
-            remote_indir_ha = remote_indir_ha,
-            remote_indir_bcm = remote_indir_bcm,
-            remote_indir_uw = remote_indir_uw,
-            remote_indir_controls_15x = remote_indir_controls_15x,
-            remote_indir_controls_30x = remote_indir_controls_30x,
-            
-            n_expected_samples_bi = n_expected_samples_bi,
-            n_expected_samples_ha = n_expected_samples_ha,
-            n_expected_samples_bcm = n_expected_samples_bcm,
-            n_expected_samples_uw = n_expected_samples_uw,
-            n_expected_samples_controls_15x = n_expected_samples_controls_15x,
-            n_expected_samples_controls_30x = n_expected_samples_controls_30x,
+            remote_indir = remote_indir,
             
             merge_mode = merge_mode,
             remote_outdir = remote_outdir,
@@ -90,21 +63,7 @@ task Impl {
     input {
         Int chunk_id
         File sample_ids
-        Array[String] bi_samples_to_prefer_over_ha
-        
-        String remote_indir_bi
-        String remote_indir_ha
-        String remote_indir_bcm
-        String remote_indir_uw
-        String remote_indir_controls_15x
-        String remote_indir_controls_30x
-        
-        Int n_expected_samples_bi
-        Int n_expected_samples_ha
-        Int n_expected_samples_bcm
-        Int n_expected_samples_uw
-        Int n_expected_samples_controls_15x
-        Int n_expected_samples_controls_30x
+        String remote_indir
         
         Int merge_mode
         Int n_files_per_merge = 100
@@ -136,83 +95,21 @@ task Impl {
         
         #
         function LocalizeChunkFiles() {
-            touch all_remote_files.txt
-
             local N_FILES
+            local N_SAMPLES=$(cat ~{sample_ids} | wc -l)
             local SLACK_GB="5"
             
-            # Ensuring that every input dataset has the expected number of
+            # Ensuring that the input dataset has the expected number of
             # samples in the chunk.
             date 1>&2
-            if [ ~{n_expected_samples_bi} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_bi}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > bi_files.txt
-                N_FILES=$(wc -l < bi_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -ne ~{n_expected_samples_bi} ]; then
-                    echo "ERROR: BI has ${N_FILES} files != ~{n_expected_samples_bi}"
-                    exit 1
-                fi
-                head -n ${N_FILES} bi_files.txt >> all_remote_files.txt
+            gcloud storage ls -l ~{remote_indir}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > remote_files.txt
+            N_FILES=$(wc -l < remote_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -ne ${N_SAMPLES} ]; then
+                echo "ERROR: input chunk has ${N_FILES} files != ${N_SAMPLES} samples in sample_ids"
+                exit 1
             fi
-        
-            if [ ~{n_expected_samples_ha} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_ha}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > ha_files.txt
-                N_FILES=$(wc -l < ha_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -ne ~{n_expected_samples_ha} ]; then
-                    echo "ERROR: HA has ${N_FILES} files != ~{n_expected_samples_ha}"
-                    exit 1
-                fi
-                head -n ${N_FILES} ha_files.txt >> all_remote_files.txt
-            fi
-        
-            if [ ~{n_expected_samples_bcm} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_bcm}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > bcm_files.txt
-                N_FILES=$(wc -l < bcm_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -ne ~{n_expected_samples_bcm} ]; then
-                    echo "ERROR: BCM has ${N_FILES} files != ~{n_expected_samples_bcm}"
-                    exit 1
-                fi
-                head -n ${N_FILES} bcm_files.txt >> all_remote_files.txt
-            fi
-        
-            if [ ~{n_expected_samples_uw} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_uw}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > uw_files.txt
-                N_FILES=$(wc -l < uw_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -ne ~{n_expected_samples_uw} ]; then
-                    echo "ERROR: UW has ${N_FILES} files != ~{n_expected_samples_uw}"
-                    exit 1
-                fi
-                head -n ${N_FILES} uw_files.txt >> all_remote_files.txt
-            fi
-        
-            if [ ~{n_expected_samples_controls_15x} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_controls_15x}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > control_15x_files.txt
-                N_FILES=$(wc -l < control_15x_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -lt ~{n_expected_samples_controls_15x} ]; then
-                    echo "ERROR: CONTROLS_15X has ${N_FILES} files < ~{n_expected_samples_controls_15x}"
-                    exit 1
-                elif [ ${N_FILES} -gt ~{n_expected_samples_controls_15x} ]; then
-                    echo "WARNING: CONTROLS_15X has ${N_FILES} files > ~{n_expected_samples_controls_15x}"
-                fi
-                head -n ${N_FILES} control_15x_files.txt >> all_remote_files.txt
-            fi
-        
-            if [ ~{n_expected_samples_controls_30x} -gt 0 ]; then
-                gcloud storage ls -l ~{remote_indir_controls_30x}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > control_30x_files.txt
-                N_FILES=$(wc -l < control_30x_files.txt)
-                N_FILES=$(( ${N_FILES} - 1 ))
-                if [ ${N_FILES} -lt ~{n_expected_samples_controls_30x} ]; then
-                    echo "ERROR: CONTROLS_30X has ${N_FILES} files < ~{n_expected_samples_controls_30x}"
-                    exit 1
-                elif [ ${N_FILES} -gt ~{n_expected_samples_controls_30x} ]; then
-                    echo "WARNING: CONTROLS_30X has ${N_FILES} files > ~{n_expected_samples_controls_30x}"
-                fi
-                head -n ${N_FILES} control_30x_files.txt >> all_remote_files.txt
-            fi
+            head -n ${N_FILES} remote_files.txt > all_remote_files.txt
             date 1>&2
         
             # Failing immediately if the files are too large WRT the available
@@ -227,47 +124,29 @@ task Impl {
                 echo "ERROR: the remote files are larger than the available disk space. Remote files + slack: ${REMOTE_GB}GB. Available disk: ${AVAILABLE_GB}GB."
                 exit 1
             fi
-            rm -f *_files.txt
+            rm -f remote_files.txt
         
-            # - Localizing all the samples for the given chunk.
-            # - Handling samples that occur in multiple input datasets.
+            # Localizing all samples for the given chunk.
             date 1>&2
             mkdir ./input_files/
-            if [ ~{n_expected_samples_bi} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_bi}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
-            if [ ~{n_expected_samples_ha} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_ha}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
-            if [ ~{n_expected_samples_bi} -gt 0 -a ~{n_expected_samples_ha} -gt 0 ]; then
-                echo ~{sep="," bi_samples_to_prefer_over_ha} | tr ',' '\n' > bi_samples_to_prefer_over_ha.txt
-                rm -f list.txt
-                local SAMPLE_ID
-                while read -u 3 SAMPLE_ID; do
-                    echo "~{remote_indir_bi}/chunk_~{chunk_id}/${SAMPLE_ID}.bcf" >> list.txt
-                    echo "~{remote_indir_bi}/chunk_~{chunk_id}/${SAMPLE_ID}.bcf.csi" >> list.txt
-                done 3< bi_samples_to_prefer_over_ha.txt                
-                cat list.txt | gcloud storage cp -I ./input_files/
-            fi
-            if [ ~{n_expected_samples_uw} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_uw}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
-            if [ ~{n_expected_samples_bcm} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_bcm}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
-            if [ ~{n_expected_samples_controls_15x} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_controls_15x}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
-            if [ ~{n_expected_samples_controls_30x} -gt 0 ]; then
-                ${TIME_COMMAND} gcloud storage cp ~{remote_indir_controls_30x}/chunk_~{chunk_id}/'*' ./input_files/
-            fi
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir}/chunk_~{chunk_id}/'*' ./input_files/
             date 1>&2
             local N_DOWNLOADED_SAMPLES=$(ls ./input_files/*.bcf | wc -l)
-            local N_SAMPLES=$(cat ~{sample_ids} | wc -l)
-            if [ ${N_DOWNLOADED_SAMPLES} -lt ${N_SAMPLES} ]; then
-                echo "ERROR: The number of downloaded samples (${N_DOWNLOADED_SAMPLES}) is smaller than the number of samples specified (${N_SAMPLES})."
+            if [ ${N_DOWNLOADED_SAMPLES} -ne ${N_SAMPLES} ]; then
+                echo "ERROR: The number of downloaded samples (${N_DOWNLOADED_SAMPLES}) is different from the number of samples specified (${N_SAMPLES})."
                 exit 1
             fi
+            local SAMPLE_ID
+            while read -u 3 SAMPLE_ID; do
+                if [ ! -f ./input_files/${SAMPLE_ID}.bcf ]; then
+                    echo "ERROR: Missing input BCF for sample ${SAMPLE_ID}."
+                    exit 1
+                fi
+                echo ${SAMPLE_ID} > ${SAMPLE_ID}.sample_name.txt
+                ${TIME_COMMAND} bcftools reheader --samples ${SAMPLE_ID}.sample_name.txt --output ./input_files/${SAMPLE_ID}.reheader.bcf ./input_files/${SAMPLE_ID}.bcf
+                mv ./input_files/${SAMPLE_ID}.reheader.bcf ./input_files/${SAMPLE_ID}.bcf
+                ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ./input_files/${SAMPLE_ID}.bcf
+            done 3< ~{sample_ids}
             df -h
         }
         
