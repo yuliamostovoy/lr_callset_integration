@@ -7,9 +7,12 @@ version 1.0
 #
 workflow SV_Integration_Workpackage9_families {
     input {
-        File family_ids
+        Array[String] family_ids
         File ped
-        File sv_integration_sample_tsv
+        Array[String] sample_ids
+        Array[String] sample_sexes
+        Array[String] aligned_bais
+        Array[String] aligned_bams
         File split_for_bcftools_merge_csv
         
         String remote_indir
@@ -25,9 +28,12 @@ workflow SV_Integration_Workpackage9_families {
         String docker_image = "us.gcr.io/broad-dsp-lrma/fcunial/callset_integration_phase2_workpackages"
     }
     parameter_meta {
-        family_ids: "One family ID per line. Each ID must match column 1 of ped."
+        family_ids: "Family IDs to process. Each ID must match column 1 of ped."
         ped: "Standard 6-column PED: family_id, sample_id, paternal_id, maternal_id, sex, phenotype."
-        sv_integration_sample_tsv: "Sample metadata TSV. First four columns are sample_id, sex, aligned_bai, aligned_bam."
+        sample_ids: "Sample IDs. Must be in the same order as sample_sexes, aligned_bais, and aligned_bams."
+        sample_sexes: "Sample sexes. Must be in the same order as sample_ids, aligned_bais, and aligned_bams."
+        aligned_bais: "Remote aligned BAM index paths. Must be in the same order as sample_ids, sample_sexes, and aligned_bams."
+        aligned_bams: "Remote aligned BAM paths. Must be in the same order as sample_ids, sample_sexes, and aligned_bais."
         split_for_bcftools_merge_csv: "A partition that covers all chromosomes. Every line is a 0-based, half-open, consecutive chunk of a chromosome. Lines are assumed to be sorted."
         remote_indir: "Without final slash. Contains WP8 genome-wide truvari_collapsed.bcf and truvari_collapsed.bcf.csi."
         remote_outdir: "Without final slash. Output sample BCF chunks are written under chunk_N/sample.bcf."
@@ -37,7 +43,10 @@ workflow SV_Integration_Workpackage9_families {
         input:
             family_ids = family_ids,
             ped = ped,
-            sv_integration_sample_tsv = sv_integration_sample_tsv,
+            sample_ids = sample_ids,
+            sample_sexes = sample_sexes,
+            aligned_bais = aligned_bais,
+            aligned_bams = aligned_bams,
             split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
             remote_indir = remote_indir,
             remote_outdir = remote_outdir,
@@ -57,9 +66,12 @@ workflow SV_Integration_Workpackage9_families {
 
 task Impl {
     input {
-        File family_ids
+        Array[String] family_ids
         File ped
-        File sv_integration_sample_tsv
+        Array[String] sample_ids
+        Array[String] sample_sexes
+        Array[String] aligned_bais
+        Array[String] aligned_bams
         File split_for_bcftools_merge_csv
         
         String remote_indir
@@ -144,7 +156,7 @@ task Impl {
             local SAMPLE_ID
             while read -u 4 SAMPLE_ID; do
                 if ! awk -v sample="${SAMPLE_ID}" 'BEGIN { FS="\t"; found=0 } $1==sample { found=1 } END { exit(found ? 0 : 1) }' sample_metadata.tsv; then
-                    echo "ERROR: sample ${SAMPLE_ID} from family ${FAMILY_ID} is missing from sv_integration_sample_tsv."
+                    echo "ERROR: sample ${SAMPLE_ID} from family ${FAMILY_ID} is missing from sample_ids."
                     exit 1
                 fi
             done 4< ${FAMILY_ID}.samples.txt
@@ -223,7 +235,33 @@ task Impl {
         
         INFINITY="1000000000"
         ~{docker_dir}/kanpig --version 1>&2
-        cp ~{sv_integration_sample_tsv} sample_metadata.tsv
+        
+        cat > sample_ids.txt <<'EOF_SAMPLE_IDS'
+~{sep="\n" sample_ids}
+EOF_SAMPLE_IDS
+        cat > sample_sexes.txt <<'EOF_SAMPLE_SEXES'
+~{sep="\n" sample_sexes}
+EOF_SAMPLE_SEXES
+        cat > aligned_bais.txt <<'EOF_ALIGNED_BAIS'
+~{sep="\n" aligned_bais}
+EOF_ALIGNED_BAIS
+        cat > aligned_bams.txt <<'EOF_ALIGNED_BAMS'
+~{sep="\n" aligned_bams}
+EOF_ALIGNED_BAMS
+        cat > family_ids.txt <<'EOF_FAMILY_IDS'
+~{sep="\n" family_ids}
+EOF_FAMILY_IDS
+        
+        N_SAMPLE_IDS=$(wc -l < sample_ids.txt)
+        N_SAMPLE_SEXES=$(wc -l < sample_sexes.txt)
+        N_ALIGNED_BAIS=$(wc -l < aligned_bais.txt)
+        N_ALIGNED_BAMS=$(wc -l < aligned_bams.txt)
+        if [ ${N_SAMPLE_IDS} -ne ${N_SAMPLE_SEXES} ] || [ ${N_SAMPLE_IDS} -ne ${N_ALIGNED_BAIS} ] || [ ${N_SAMPLE_IDS} -ne ${N_ALIGNED_BAMS} ]; then
+            echo "ERROR: sample_ids, sample_sexes, aligned_bais, and aligned_bams must have the same length."
+            echo "sample_ids=${N_SAMPLE_IDS}, sample_sexes=${N_SAMPLE_SEXES}, aligned_bais=${N_ALIGNED_BAIS}, aligned_bams=${N_ALIGNED_BAMS}"
+            exit 1
+        fi
+        paste sample_ids.txt sample_sexes.txt aligned_bais.txt aligned_bams.txt > sample_metadata.tsv
         
         # Localizing the WP8 cohort VCF.
         ${TIME_COMMAND} gcloud storage cp ~{remote_indir}/truvari_collapsed.'bcf*' .
@@ -257,7 +295,7 @@ task Impl {
             
             gcloud storage cp ${FAMILY_ID}_family.csv ~{remote_outdir}/
             rm -f ${FAMILY_ID}.samples.txt ${FAMILY_ID}_present.vcf.gz* ${FAMILY_ID}_family.csv
-        done 3< ~{family_ids}
+        done 3< family_ids.txt
     >>>
     
     output {
