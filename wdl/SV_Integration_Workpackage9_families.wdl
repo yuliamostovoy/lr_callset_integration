@@ -17,6 +17,7 @@ workflow SV_Integration_Workpackage9_families {
         
         String remote_indir
         String remote_outdir
+        String requester_pays_project = ""
         
         File reference_fa
         File reference_fai
@@ -37,6 +38,7 @@ workflow SV_Integration_Workpackage9_families {
         split_for_bcftools_merge_csv: "A partition that covers all chromosomes. Every line is a 0-based, half-open, consecutive chunk of a chromosome. Lines are assumed to be sorted."
         remote_indir: "Without final slash. Contains WP8 genome-wide truvari_collapsed.bcf and truvari_collapsed.bcf.csi."
         remote_outdir: "Without final slash. Output sample BCF chunks are written under chunk_N/sample.bcf."
+        requester_pays_project: "Google Cloud project to bill for requester-pays BAM/BAI buckets. Leave blank for non-requester-pays buckets."
     }
     
     call Impl {
@@ -50,6 +52,7 @@ workflow SV_Integration_Workpackage9_families {
             split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
             remote_indir = remote_indir,
             remote_outdir = remote_outdir,
+            requester_pays_project = requester_pays_project,
             reference_fa = reference_fa,
             reference_fai = reference_fai,
             ploidy_bed_female = ploidy_bed_female,
@@ -76,6 +79,7 @@ task Impl {
         
         String remote_indir
         String remote_outdir
+        String requester_pays_project
         
         File reference_fa
         File reference_fai
@@ -107,6 +111,10 @@ task Impl {
         EFFECTIVE_RAM_GB=$(( ~{ram_size_gb} - 1 ))
         export BCFTOOLS_PLUGINS="~{docker_dir}/bcftools-1.22/plugins"
         export RUST_BACKTRACE="full"
+        GCLOUD_STORAGE_BILLING_FLAGS=""
+        if [ -n "~{requester_pays_project}" ]; then
+            GCLOUD_STORAGE_BILLING_FLAGS="--billing-project=~{requester_pays_project}"
+        fi
         
         
         # ----------------------- Steps of the pipeline ------------------------
@@ -121,7 +129,7 @@ task Impl {
             local AVAILABLE_GB=$(df -h | grep "cromwell_root" | tr -s ' ' | cut -d ' ' -f 4)
             AVAILABLE_GB=${AVAILABLE_GB%G}
             AVAILABLE_GB=${AVAILABLE_GB%.*}
-            local BAM_BYTES=$(gcloud storage ls -l "${ALIGNED_BAM}" | awk '$1 ~ /^[0-9]+$/ { print $1; exit }')
+            local BAM_BYTES=$(gcloud storage ls -l ${GCLOUD_STORAGE_BILLING_FLAGS} "${ALIGNED_BAM}" | awk '$1 ~ /^[0-9]+$/ { print $1; exit }')
             if [ -z "${BAM_BYTES}" ]; then
                 echo "ERROR: could not determine BAM size for ${ALIGNED_BAM}."
                 exit 1
@@ -134,8 +142,8 @@ task Impl {
             fi
             
             date 1>&2
-            gcloud storage cp "${ALIGNED_BAM}" ./${SAMPLE_ID}_aligned.bam
-            gcloud storage cp "${ALIGNED_BAI}" ./${SAMPLE_ID}_aligned.bam.bai
+            gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} "${ALIGNED_BAM}" ./${SAMPLE_ID}_aligned.bam
+            gcloud storage cp ${GCLOUD_STORAGE_BILLING_FLAGS} "${ALIGNED_BAI}" ./${SAMPLE_ID}_aligned.bam.bai
             date 1>&2
             touch ${SAMPLE_ID}_aligned.bam.bai
         }
