@@ -490,6 +490,11 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/Trgt2Kanpig.wdl
   testParameterFiles:
+- name: TRGTMergeCohort
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/TRGTMergeCohort.wdl
+  testParameterFiles:
 - name: CollapseHapsVcf
   subclass: wdl
   publish: True
