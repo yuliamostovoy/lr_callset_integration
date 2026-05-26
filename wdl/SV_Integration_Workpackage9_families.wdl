@@ -256,6 +256,8 @@ EOF_ALIGNED_BAMS
         cat > family_ids.txt <<'EOF_FAMILY_IDS'
 ~{sep="\n" family_ids}
 EOF_FAMILY_IDS
+        grep -v '^[[:space:]]*$' family_ids.txt | sort -u > family_ids.unique.txt
+        mv family_ids.unique.txt family_ids.txt
         
         N_SAMPLE_IDS=$(wc -l < sample_ids.txt)
         N_SAMPLE_SEXES=$(wc -l < sample_sexes.txt)
