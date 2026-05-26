@@ -113,7 +113,12 @@ task Impl {
             local AVAILABLE_GB=$(df -h | grep "cromwell_root" | tr -s ' ' | cut -d ' ' -f 4)
             AVAILABLE_GB=${AVAILABLE_GB%G}
             AVAILABLE_GB=${AVAILABLE_GB%.*}
-            local BAM_GB=$(gcloud storage ls -l "${ALIGNED_BAM}" | tr -s ' ' | sed 's/^[ ]*//' | cut -d ' ' -f 1)
+            local BAM_BYTES=$(gcloud storage ls -l "${ALIGNED_BAM}" | awk '$1 ~ /^[0-9]+$/ { print $1; exit }')
+            if [ -z "${BAM_BYTES}" ]; then
+                echo "ERROR: could not determine BAM size for ${ALIGNED_BAM}."
+                exit 1
+            fi
+            local BAM_GB=${BAM_BYTES}
             BAM_GB=$(( (${BAM_GB} + 1073741823) / 1073741824 + 5 ))
             if [ ${BAM_GB} -gt ${AVAILABLE_GB} ]; then
                 echo "ERROR: the BAM is larger than the available disk space. BAM size + slack: ${BAM_GB}GB. Available disk: ${AVAILABLE_GB}GB."
