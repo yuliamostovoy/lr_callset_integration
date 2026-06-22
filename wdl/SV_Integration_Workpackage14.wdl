@@ -13,8 +13,11 @@ workflow SV_Integration_Workpackage14 {
         String chromosome_id
         File chunks_ids
         String remote_outdir
+        File reference_fa
+        File reference_fai
         
-        String truvari_matching_parameters = "--refdist 500 --pctseq 0 --pctsize 0.95 --pctovl 0.0"
+        String truvari_matching_parameters = "--refdist 500 --pctseq 0.95 --pctsize 0.95 --pctovl 0.0"
+        Int max_resolve = 100000
         Boolean use_bed
         
         String docker_image = "us.gcr.io/broad-dsp-lrma/fcunial/callset_integration_phase2_workpackages"
@@ -22,7 +25,8 @@ workflow SV_Integration_Workpackage14 {
     parameter_meta {
         remote_indir: "Without final slash"
         remote_outdir: "Without final slash"
-        truvari_matching_parameters: "Truvari's definition of a match. The default string contains truvari's defaults. Sequence similarity is turned off for speed reasons."
+        truvari_matching_parameters: "Truvari's definition of a match. Sequence similarity is enabled by default for records Truvari can resolve under max_resolve."
+        max_resolve: "Maximum SV size for Truvari to resolve symbolic records against the reference during collapse."
     }
     
     call Impl {
@@ -31,8 +35,11 @@ workflow SV_Integration_Workpackage14 {
             chromosome_id = chromosome_id,
             chunks_ids = chunks_ids,
             remote_outdir = remote_outdir,
+            reference_fa = reference_fa,
+            reference_fai = reference_fai,
             
             truvari_matching_parameters = truvari_matching_parameters,
+            max_resolve = max_resolve,
             use_bed = use_bed,
             
             docker_image = docker_image
@@ -60,8 +67,11 @@ task Impl {
         String chromosome_id
         File chunks_ids
         String remote_outdir
+        File reference_fa
+        File reference_fai
         
         String truvari_matching_parameters
+        Int max_resolve
         Boolean use_bed
         
         String docker_image
@@ -72,8 +82,6 @@ task Impl {
     }
     parameter_meta {
     }
-    
-    String docker_dir = "/callset_integration"
     
     command <<<
         set -euxo pipefail
@@ -163,7 +171,7 @@ task Impl {
             
             # Remark: we do not store `removed.vcf` since it's not needed and
             # it can be much bigger than the collapsed output.
-            ${TIME_COMMAND} truvari collapse --sizemin 0 --sizemax ${INFINITY} --keep maxqual --gt off ~{truvari_matching_parameters} ${BED_FLAGS} --input chunk_${CHUNK_ID}_in.vcf.gz --output chunk_${CHUNK_ID}_out.vcf --removed-output /dev/null
+            ${TIME_COMMAND} truvari collapse --sizemin 0 --sizemax ${INFINITY} --keep maxqual --gt off --reference ~{reference_fa} --max-resolve ~{max_resolve} --dup-to-ins ~{truvari_matching_parameters} ${BED_FLAGS} --input chunk_${CHUNK_ID}_in.vcf.gz --output chunk_${CHUNK_ID}_out.vcf --removed-output /dev/null
             df -h 1>&2
             ls -laht 1>&2
             rm -f chunk_${CHUNK_ID}_in.vcf.gz* ; mv chunk_${CHUNK_ID}_out.vcf chunk_${CHUNK_ID}_in.vcf
@@ -191,6 +199,7 @@ task Impl {
         
         INFINITY="1000000000"
         truvari --help 1>&2
+        ls ~{reference_fai} 1>&2
         df -h 1>&2
         
         if ~{use_bed} ; then
