@@ -625,3 +625,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_UltralongAnnotate.wdl
   testParameterFiles:
+- name: SV_Integration_Workpackage1_UltralongBnd2kb
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage1_UltralongBnd2kb.wdl
+  testParameterFiles:
