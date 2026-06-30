@@ -1,239 +1,19 @@
 version: 1.2
 workflows:
-- name: PAV2SVs
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/PAV2SVs.wdl
-  testParameterFiles:
-- name: Resolve
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Resolve.wdl
-  testParameterFiles:
-- name: TruvariIntrasample
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TruvariIntrasample.wdl
-  testParameterFiles:
-- name: Kanpig
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Kanpig.wdl
-  testParameterFiles:
-- name: Dipcall2SVs
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Dipcall2SVs.wdl
-  testParameterFiles:
-- name: BuildTrainingResourceIntrasample
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BuildTrainingResourceIntrasample.wdl
-  testParameterFiles:
-- name: BuildTrainingResourceIntersample
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BuildTrainingResourceIntersample.wdl
-  testParameterFiles:
-- name: FilterIntrasampleDevPhase2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/FilterIntrasampleDevPhase2.wdl
-  testParameterFiles:
-- name: DipcallPhase2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/DipcallPhase2.wdl
-  testParameterFiles:
-- name: HGSVC3ExtractHapsFromAssemblies
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/HGSVC3ExtractHapsFromAssemblies.wdl
-  testParameterFiles:
-- name: Split
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Split.wdl
-  testParameterFiles:
-- name: HGSVC3Dipcall2BAMs
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/HGSVC3Dipcall2BAMs.wdl
-  testParameterFiles:
-- name: TruvariIntersamplePhase2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TruvariIntersamplePhase2.wdl
-  testParameterFiles:
-- name: RemoveSamples
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/RemoveSamples.wdl
-  testParameterFiles:
-- name: KanpigMerged
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/KanpigMerged.wdl
-  testParameterFiles:
-- name: PasteGTs
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/PasteGTs.wdl
-  testParameterFiles:
-- name: InterCenterMerge
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/InterCenterMerge.wdl
-  testParameterFiles:
-- name: InterCenterBench
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/InterCenterBench.wdl
-  testParameterFiles:
-- name: Workpackage1
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage1.wdl
-  testParameterFiles:
-- name: Workpackage3
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage3.wdl
-  testParameterFiles:
-- name: Workpackage4
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage4.wdl
-  testParameterFiles:
-- name: Workpackage5
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage5.wdl
-  testParameterFiles:
-- name: Workpackage6
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage6.wdl
-  testParameterFiles:
-- name: Workpackage7
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage7.wdl
-  testParameterFiles:
-- name: Workpackage8
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage8.wdl
-  testParameterFiles:
-- name: Workpackage9
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage9.wdl
-  testParameterFiles:
-- name: Workpackage10
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage10.wdl
-  testParameterFiles:
-- name: Workpackage11
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage11.wdl
-  testParameterFiles:
-- name: Workpackage12
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage12.wdl
-  testParameterFiles:
-- name: Workpackage13
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage13.wdl
-  testParameterFiles:
 - name: QcPlots
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/QcPlots.wdl
-  testParameterFiles:      
+  testParameterFiles:
 - name: PlotHwe
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/PlotHwe.wdl
-  testParameterFiles:      
-- name: CheckMendelian
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/CheckMendelian.wdl
   testParameterFiles:
-- name: BenchCohortSamples
+- name: PlotHweImpl
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/BenchCohortSamples.wdl
-  testParameterFiles:
-- name: GetPresentCalls
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetPresentCalls.wdl
-  testParameterFiles:
-- name: BenchHprcSamples
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchHprcSamples.wdl
-  testParameterFiles:
-- name: CheckDeNovo
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/CheckDeNovo.wdl
-  testParameterFiles:
-- name: GetLongCalls
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetLongCalls.wdl
-  testParameterFiles:
-- name: ReadLengthDistribution
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/ReadLengthDistribution.wdl
-  testParameterFiles:
-- name: SubsampleSimple
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SubsampleSimple.wdl
-  testParameterFiles:
-- name: DownloadAssembly
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/DownloadAssembly.wdl
-  testParameterFiles:
-- name: MapR10Phase2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/MapR10Phase2.wdl
-  testParameterFiles:
-- name: MapCCSPhase2Prime
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/MapCCSPhase2Prime.wdl
-  testParameterFiles:
-- name: MapCCSPhase2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/MapCCSPhase2.wdl
-  testParameterFiles:
-- name: AddReadGroup
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/AddReadGroup.wdl
-  testParameterFiles:
-- name: MapR10Phase2Scattered
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/MapR10Phase2Scattered.wdl
-  testParameterFiles:
-- name: MapR10Phase2ScatteredLrhq
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/MapR10Phase2ScatteredLrhq.wdl
+  primaryDescriptorPath: /wdl/PlotHweImpl.wdl
   testParameterFiles:
 - name: PlotHweFocused
   subclass: wdl
@@ -245,285 +25,65 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/PlotHweFocusedAc.wdl
   testParameterFiles:
-- name: BenchCohortTrios
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTrios.wdl
-  testParameterFiles:
 - name: PlotHweFocusedTruvariCollapse
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/PlotHweFocusedTruvariCollapse.wdl
-  testParameterFiles:
-- name: Workpackage9Squish
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage9Squish.wdl
-  testParameterFiles:
-- name: TestKanpigIntersample
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TestKanpigIntersample.wdl
-  testParameterFiles:
-- name: BenchCohortTriosSquish
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTriosSquish.wdl
-  testParameterFiles:
-- name: BenchCohortTriosSquish2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTriosSquish2.wdl
-  testParameterFiles:
-- name: GetMapqDistribution
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetMapqDistribution.wdl
-  testParameterFiles:
-- name: Workpackage9Subsets
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage9Subsets.wdl
-  testParameterFiles:
-- name: GetGtAdMatrix
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetGtAdMatrix.wdl
-  testParameterFiles:
-- name: AnalyzeGtAdMatrix
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/AnalyzeGtAdMatrix.wdl
-  testParameterFiles:
-- name: FixUnsupportedGts
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/FixUnsupportedGts.wdl
-  testParameterFiles:
-- name: GetGenotypingPriors
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetGenotypingPriors.wdl
-  testParameterFiles:
-- name: Workpackage9Palt
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Workpackage9Palt.wdl
-  testParameterFiles:
-- name: TestBetaBinomial
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TestBetaBinomial.wdl
-  testParameterFiles:
-- name: TestBetaBinomial2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TestBetaBinomial2.wdl
-  testParameterFiles:      
-- name: BenchCohortSamplesBetaBinomial
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortSamplesBetaBinomial.wdl
-  testParameterFiles:
-- name: TestBetaBinomial_Merge
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TestBetaBinomial_Merge.wdl
-  testParameterFiles:      
-- name: BenchCohortTriosSquish3
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTriosSquish3.wdl
-  testParameterFiles:
-- name: TestBetaBinomial3
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/TestBetaBinomial3.wdl
-  testParameterFiles:      
-- name: PhabTrios
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/PhabTrios.wdl
-  testParameterFiles:      
-- name: DeNovoByRegion
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/DeNovoByRegion.wdl
-  testParameterFiles:
-- name: SubsampleAlignedBam
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SubsampleAlignedBam.wdl
-  testParameterFiles:
-- name: FilterTruvariIntersample
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/FilterTruvariIntersample.wdl
-  testParameterFiles:
-- name: BenchCohortSamples_windowed
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortSamples_windowed.wdl
-  testParameterFiles:
-- name: FilterTruvariIntersample2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/FilterTruvariIntersample2.wdl
-  testParameterFiles:
-- name: SubsetToAncestry
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SubsetToAncestry.wdl
-  testParameterFiles:
-- name: BenchCohortTriosSquish4
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTriosSquish4.wdl
-  testParameterFiles:
-- name: CountTrSubstratifications
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/CountTrSubstratifications.wdl
-  testParameterFiles:
-- name: BenchCohortTriosSquish5
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortTriosSquish5.wdl
-  testParameterFiles:
-- name: GetNCalls
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetNCalls.wdl
-  testParameterFiles:
-- name: GetNCalls2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetNCalls2.wdl
-  testParameterFiles:
-- name: Bam2Fastq
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Bam2Fastq.wdl
-  testParameterFiles:
-- name: GetCompositeSvs
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/GetCompositeSvs.wdl
-  testParameterFiles:
-- name: PersonalizedCohortVcf
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/PersonalizedCohortVcf.wdl
-  testParameterFiles:
-- name: BenchCohortSamples_PersonalizedCohortVcf
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BenchCohortSamples_PersonalizedCohortVcf.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage1
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage1.wdl
-  testParameterFiles:
-- name: SV_Integration_BuildTrainingResource
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_BuildTrainingResource.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage3
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage3.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage5
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage5.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage5_Bnd
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage5_Bnd.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage6
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage6.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage7
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage7.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage8
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage8.wdl
-  testParameterFiles:
-- name: SV_Integration_RegenotypingAnalysis
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_RegenotypingAnalysis.wdl
-  testParameterFiles:
-- name: PhabRegenotypedCohort
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/PhabRegenotypedCohort.wdl
-  testParameterFiles:
-- name: BuildKanpigHapVcf
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/BuildKanpigHapVcf.wdl
-  testParameterFiles:
-- name: RegenotypeKanpigHapsVcf
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/RegenotypeKanpigHapsVcf.wdl
-  testParameterFiles:
-- name: RegenotypeShapeit4
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/RegenotypeShapeit4.wdl
-  testParameterFiles:
-- name: Trgt2Kanpig
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/Trgt2Kanpig.wdl
   testParameterFiles:
 - name: TRGTMergeCohort
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/TRGTMergeCohort.wdl
   testParameterFiles:
-- name: CollapseHapsVcf
+- name: UltralongAnnotate
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/CollapseHapsVcf.wdl
+  primaryDescriptorPath: /wdl/UltralongAnnotate.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage8_Prime
+- name: UltralongCanonizeDipcall
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage8_Prime.wdl
+  primaryDescriptorPath: /wdl/UltralongCanonizeDipcall.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage9
+- name: UltralongGetTrainingIntervals
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage9.wdl
+  primaryDescriptorPath: /wdl/UltralongGetTrainingIntervals.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage9_families
+- name: UltralongGetTrainingIntervalsSvim
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage9_families.wdl
+  primaryDescriptorPath: /wdl/UltralongGetTrainingIntervalsSvim.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage9_trios
+- name: UltralongMerge
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage9_trios.wdl
+  primaryDescriptorPath: /wdl/UltralongMerge.wdl
   testParameterFiles:
-- name: SV_Integration_Workpackage11
+- name: UltralongRecordsInTrack
   subclass: wdl
   publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage11.wdl
+  primaryDescriptorPath: /wdl/UltralongRecordsInTrack.wdl
+  testParameterFiles:
+- name: UltralongScore
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/UltralongScore.wdl
+  testParameterFiles:
+- name: SV_Integration_BndAnnotate
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndAnnotate.wdl
+  testParameterFiles:
+- name: SV_Integration_BndGetTrainingIntervals
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndGetTrainingIntervals.wdl
+  testParameterFiles:
+- name: SV_Integration_BuildTrainingResource
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BuildTrainingResource.wdl
   testParameterFiles:
 - name: SV_Integration_PlotHwe
   subclass: wdl
@@ -534,6 +94,91 @@ workflows:
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_PlotHwe_SNVs.wdl
+  testParameterFiles:
+- name: SV_Integration_PlotPrme
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_PlotPrme.wdl
+  testParameterFiles:
+- name: SV_Integration_RegenotypingAnalysis
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_RegenotypingAnalysis.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongAnalysis
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongAnalysis.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongAnnotate
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongAnnotate.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongGetTrainingIntervals
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongGetTrainingIntervals.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage1_ExtractUltralongBnd2kb
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage1_ExtractUltralongBnd2kb.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage1_intrasample_merge
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage1_intrasample_merge.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage2_Main_scoring
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage2_Main_scoring.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage3_Main_bcftools_merge
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage3_Main_bcftools_merge.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage4_Main_shard
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage4_Main_shard.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage5_Bnd
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage5_Bnd.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage5_Main_truvari_collapse
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage5_Main_truvari_collapse.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage6_Main_concat_shards
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage6_Main_concat_shards.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage7_Main_joint_genotype_families
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage7_Main_joint_genotype_families.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage7_trios
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage7_trios.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage8_Main_concat_regenotyped_shards
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage8_Main_concat_regenotyped_shards.wdl
+  testParameterFiles:
+- name: SV_Integration_Workpackage9
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage9.wdl
   testParameterFiles:
 - name: SV_Integration_Workpackage12
   subclass: wdl
@@ -554,79 +199,4 @@ workflows:
   subclass: wdl
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_Workpackage15.wdl
-  testParameterFiles:
-- name: InvestigateMaleSamples
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/InvestigateMaleSamples.wdl
-  testParameterFiles:
-- name: SV_Integration_PlotPrme
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_PlotPrme.wdl
-  testParameterFiles:
-- name: InvestigateMaleSamples2
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/InvestigateMaleSamples2.wdl
-  testParameterFiles:
-- name: SV_Integration_UltralongAnalysis
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_UltralongAnalysis.wdl
-  testParameterFiles:
-- name: UltralongAnnotate
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongAnnotate.wdl
-  testParameterFiles:
-- name: UltralongMerge
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongMerge.wdl
-  testParameterFiles:
-- name: UltralongScore
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongScore.wdl
-  testParameterFiles:
-- name: UltralongCanonizeDipcall
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongCanonizeDipcall.wdl
-  testParameterFiles:
-- name: UltralongGetTrainingIntervals
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongGetTrainingIntervals.wdl
-  testParameterFiles:
-- name: SvimAsm
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SvimAsm.wdl
-  testParameterFiles:
-- name: UltralongGetTrainingIntervalsSvim
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongGetTrainingIntervals.wdl
-  testParameterFiles:
-- name: InsRemap
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/InsRemap.wdl
-  testParameterFiles:
-- name: UltralongRecordsInTrack
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/UltralongRecordsInTrack.wdl
-  testParameterFiles:
-- name: SV_Integration_UltralongAnnotate
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_UltralongAnnotate.wdl
-  testParameterFiles:
-- name: SV_Integration_Workpackage1_UltralongBnd2kb
-  subclass: wdl
-  publish: True
-  primaryDescriptorPath: /wdl/SV_Integration_Workpackage1_UltralongBnd2kb.wdl
   testParameterFiles:
