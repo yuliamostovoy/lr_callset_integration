@@ -4,10 +4,10 @@ import java.io.*;
 
 /**
  * Given the BED file created by `samtools bedcov` (with format CHROM,START,END,
- * ID,BEDCOV), the program reformats it as VCF_ID,BEDCOV. Output values are 
- * normalized by BIN_LENGTH.
+ * RECORDID,BINID,BEDCOV), the program reformats it as RECORDID,BINID,BEDCOV.
+ * Output values are normalized by BIN_LENGTH.
  */
-public class UltralongPointCreateBedcovAnnotations {
+public class UltralongBndCreateBedcovAnnotations {
     
     /**
      * @param args
@@ -16,8 +16,8 @@ public class UltralongPointCreateBedcovAnnotations {
         final String INPUT_BED = args[0];
         final int BIN_LENGTH = Integer.parseInt(args[1]);
         
-        int i;
-        String str, id;
+        int i, p;
+        String str, id, recordId, binId;
         BufferedReader br;
         String[] tokens;
         
@@ -25,8 +25,9 @@ public class UltralongPointCreateBedcovAnnotations {
         str=br.readLine();
         while (str!=null) {
             tokens=str.split("\t");
-            id=tokens[3].substring(0,tokens[3].lastIndexOf("_"));
-            System.out.printf("%s\t%.3f\n",id,(Double.parseDouble(tokens[4])/BIN_LENGTH));
+            recordId=tokens[3];
+            binId=tokens[4];
+            System.out.printf("%s\t%s\t%.3f\n",recordId,binId,(Double.parseDouble(tokens[5])/BIN_LENGTH));
             str=br.readLine();
         }
         br.close();

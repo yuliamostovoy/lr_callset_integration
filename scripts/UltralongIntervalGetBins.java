@@ -28,8 +28,9 @@ public class UltralongIntervalGetBins {
         final int N_BINS = Integer.parseInt(args[2]);
         final int BREAKPOINT_BIN_LENGTH = Integer.parseInt(args[3]);
         
-        int i, p;
-        int chromLength, pos, svlen, quantum, binStart, binEnd;
+        int i;
+        int chromLength;
+        long p, pos, svlen, quantum, binStart, binEnd;  // Long needed to avoid overflow
         String str, chrom, id, info;
         BufferedReader br;
         String[] tokens;

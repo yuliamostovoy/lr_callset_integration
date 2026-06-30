@@ -27,11 +27,11 @@ public class UltralongDepthGetBreakpoints {
         double lowDepth1, lowDepth2, ratio, maxRatio;
         String str;
         BufferedReader br;
-        short[] depth;
+        int[] depth;
         Vector<Breakpoint> leftBreakpoints, rightBreakpoints;
 
         // Loading all depths in memory
-        depth = new short[SAMTOOLS_DEPTH_N_POSITIONS]; firstPos=-1;
+        depth = new int[SAMTOOLS_DEPTH_N_POSITIONS]; firstPos=-1;
         br = new BufferedReader(new FileReader(SAMTOOLS_DEPTH_FILE));
         str=br.readLine(); i=-1;
         while (str!=null) {
@@ -49,7 +49,7 @@ public class UltralongDepthGetBreakpoints {
             posEnd=p;
             if (firstPos==-1) firstPos=Integer.parseInt(str.substring(posStart,posEnd));
             p++;
-            depth[++i]=Short.parseShort(str.substring(p));
+            depth[++i]=Integer.parseInt(str.substring(p));
             str=br.readLine();
         }
         br.close();
@@ -118,7 +118,7 @@ public class UltralongDepthGetBreakpoints {
                 rightBreakpoint=rightBreakpoints.get(j).breakpoint;
                 if (rightBreakpoint<=leftBreakpoint) continue;
                 lowDepth2=rightBreakpoints.get(j).lowDepth;
-                short[] newArray = Arrays.copyOfRange(depth,leftBreakpoint,rightBreakpoint+1);
+                int[] newArray = Arrays.copyOfRange(depth,leftBreakpoint,rightBreakpoint+1);
                 Arrays.sort(newArray);
                 if (newArray[newArray.length/2]>=(lowDepth1<lowDepth2?lowDepth1:lowDepth2)*BIN_COVERAGE_RATIO) {
                     validPairs++;

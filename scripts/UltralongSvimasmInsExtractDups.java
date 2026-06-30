@@ -7,13 +7,17 @@ import java.io.*;
  * Given a VCF that contains only svim-asm INS records, the program separates
  * records that are likely DUP based on the dipcall confident BED.
  * 
- * Remark: the output DUP VCF is not necessarily sorted.
+ * Remark: the confident BED is assumed to contain sorted, non-overlapping
+ * intervals.
+ * 
+ * Remark: the output DUP VCF is not necessarily sorted if it contains DUP 
+ * records.
  */
 public class UltralongSvimasmInsExtractDups {
     
     /**
      * @param args
-     * 1: we assume that every chromosome forms a contiguous block.
+     * 7: 0=output INS->DUP records as DUP; 1=output INS->DUP records as INS.
      */
     public static void main(String[] args) throws IOException {
         final String INPUT_VCF_GZ = args[0];
@@ -22,12 +26,15 @@ public class UltralongSvimasmInsExtractDups {
         final int SLACK_BP = Integer.parseInt(args[3]);
         final double LENGTH_SIMILARITY = Double.parseDouble(args[4]);
         final String OUTPUT_VCF_DUP = args[5];
+        final String OUTPUT_VCF_INS = args[6];
+        final int OUTPUT_DUP_MODE = Integer.parseInt(args[7]);
 
+        boolean found;
         int i, j;
         int pos, newPos, newEnd, newLength, bedLength, svlen, nRecords, nDups;
-        String str, chrom, info;
+        String str, chrom, alt, info;
         BufferedReader br;
-        BufferedWriter bw;
+        BufferedWriter bwIns, bwDup;
         int[] chrFirst;
         String[] bedChr, tokens;
         int[][] bedIntervals;
@@ -55,12 +62,19 @@ public class UltralongSvimasmInsExtractDups {
         }
 
         // Processing the VCF
-        bw = new BufferedWriter(new FileWriter(OUTPUT_VCF_DUP));
+        bwDup = new BufferedWriter(new FileWriter(OUTPUT_VCF_DUP));
+        bwIns = new BufferedWriter(new FileWriter(OUTPUT_VCF_INS));
         br = new BufferedReader( new InputStreamReader( (INPUT_VCF_GZ.length()>=7&&INPUT_VCF_GZ.substring(INPUT_VCF_GZ.length()-7).equalsIgnoreCase(".vcf.gz")) ? new GZIPInputStream(new FileInputStream(INPUT_VCF_GZ)) : new FileInputStream(INPUT_VCF_GZ) ) );
         str=br.readLine(); nRecords=0; nDups=0;
         while (str!=null) {
             if (str.charAt(0)=='#') {
-                bw.write(str+"\n");
+                if (str.startsWith("#CHROM") && OUTPUT_DUP_MODE==0) {
+                    bwDup.write("##INFO=<ID=INS_POS,Number=1,Type=Integer,Description=\"The POS of the original INS record\">\n");
+                    bwDup.write("##INFO=<ID=INS_ALT,Number=1,Type=String,Description=\"The ALT allele of the original INS record\">\n");
+                    bwDup.write("##INFO=<ID=INS_QUAL,Number=1,Type=Integer,Description=\"The QUAL of the original INS record\">\n");
+                }
+                bwDup.write(str+"\n");
+                bwIns.write(str+"\n");
                 str=br.readLine();
                 continue;
             }
@@ -73,34 +87,46 @@ public class UltralongSvimasmInsExtractDups {
             i=chrom2index(chrom);
             if (i==-1) { 
                 // Non-standard chromosome
+                bwIns.write(str+"\n");
                 str=br.readLine();
                 continue; 
             }
-            i=chrFirst[i];
+            i=chrFirst[i]; 
+            if (i==-1) { 
+                // No BED record for this chromosome
+                bwIns.write(str+"\n");
+                str=br.readLine();
+                continue; 
+            }
+            found=false;
             while (i<N_BED_RECORDS) {
                 if (!bedChr[i].equals(chrom)) break;
-                else if (pos<bedIntervals[i][0]-SLACK_BP) { i++; continue; }
-                else if (pos>bedIntervals[i][1]+SLACK_BP) break;
+                else if (pos<bedIntervals[i][0]-SLACK_BP) break;
+                else if (pos>bedIntervals[i][1]+SLACK_BP) { i++; continue; }
                 else if (svlen>=(bedIntervals[i][1]-bedIntervals[i][0])*LENGTH_SIMILARITY) {
-                    nDups++;
-                    newPos=bedIntervals[i][0]; newEnd=bedIntervals[i][1]; newLength=newEnd-newPos;
-                    tokens[1]=newPos+"";
-                    tokens[4]="<DUP>";
-                    info=addOrReplaceInfoField(info,"SVLEN",String.valueOf(newLength));
-                    info=addOrReplaceInfoField(info,"SVTYPE","DUP");
-                    info=addOrReplaceInfoField(info,"END",newEnd+"");
-                    tokens[7]=info;
-                    bw.write(tokens[0]);
-                    for (j=1; j<tokens.length; j++) bw.write("\t"+tokens[j]);
-                    bw.write("\n");
+                    found=true; nDups++;
+                    if (OUTPUT_DUP_MODE==0) {
+                        newPos=bedIntervals[i][0]; newEnd=bedIntervals[i][1]; newLength=newEnd-newPos;
+                        tokens[1]=newPos+"";
+                        alt=tokens[4]; tokens[4]="<DUP>";
+                        info=addOrReplaceInfoField(info,"SVLEN",String.valueOf(newLength));
+                        info=addOrReplaceInfoField(info,"SVTYPE","DUP");
+                        info=addOrReplaceInfoField(info,"END",newEnd+"");
+                        info+=";INS_POS="+pos+";INS_ALT="+alt+";INS_QUAL="+tokens[5];
+                        tokens[7]=info;
+                    }
+                    bwDup.write(tokens[0]);
+                    for (j=1; j<tokens.length; j++) bwDup.write("\t"+tokens[j]);
+                    bwDup.write("\n");
                     break;
                 }
                 else { i++; continue; }
             }
+            if (!found) bwIns.write(str+"\n");
             str=br.readLine();
         }
-        br.close(); bw.close();
-        System.err.println("Created "+nDups+" DUPs out of "+nRecords+" INS records ("+String.format("%.2f",(100.0*nDups)/nRecords)+"%).");
+        br.close(); bwDup.close(); bwIns.close();
+        System.err.println("Extracted "+nDups+" DUPs out of "+nRecords+" INS records ("+String.format("%.2f",(100.0*nDups)/nRecords)+"%) with dipcall BED.");
     }
 
 

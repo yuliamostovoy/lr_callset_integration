@@ -69,7 +69,7 @@ public class UltralongIntervalGetClips {
                     refPos+=Integer.parseInt(cigar.substring(i,j));
                     i=j+1;
                 }
-                if (c=='S') {
+                else if (c=='S') {
                     newReadPos=readPos+Integer.parseInt(cigar.substring(i,j));
                     i=j+1;
                     if ( refPos-1>=START && refPos-1<END &&

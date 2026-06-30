@@ -1,10 +1,12 @@
 version 1.0
 
-# 
+
+# Annotates ultralong VCFs with multiple BAM- and genotyper-derived features,
+# and splits them by SVTYPE.
 #
 workflow SV_Integration_UltralongAnnotate {
     input {
-        File chunk_csv
+        File chunk_tsv
         String remote_indir
         String remote_outdir
         
@@ -13,6 +15,7 @@ workflow SV_Integration_UltralongAnnotate {
         
         Int ins2dup_bin_length = 100
         Float ins2dup_bin_coverage_ratio = 1.5
+        Int convert_ins_to_dup = 1
         
         Int custom_n_coverage_bins = 10
         Int custom_breakpoint_window_bp = 500
@@ -20,6 +23,7 @@ workflow SV_Integration_UltralongAnnotate {
         Int custom_adjacency_slack_bp = 300
 
         File feature_extraction_py
+        Int use_cutefc = 0
 
         File tr_bed
         File segdup_bed
@@ -30,15 +34,16 @@ workflow SV_Integration_UltralongAnnotate {
         Int preemptible_number = 3
     }
     parameter_meta {
-        chunk_csv: "Format: ID,bai,bam"
-        tr_bed: "From: https://github.com/PacificBiosciences/pbsv/tree/master/annotations" 
+        chunk_tsv: "Format: `ID,?,bai,bam,?,...,?` where `?` means a single string."
+        convert_ins_to_dup: "1=INS records that correspond to duplications are rewritten as DUP records"
+        tr_bed: "From: https://github.com/PacificBiosciences/pbsv/tree/master/annotations"
         segdup_bed: "From: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.6/GRCh38@all/"
         gc_content_bed: "From: https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/genome-stratifications/v3.6/GRCh38@all/"
     }
     
     call Impl {
         input:
-            chunk_csv = chunk_csv,
+            chunk_tsv = chunk_tsv,
             remote_indir = remote_indir,
             remote_outdir = remote_outdir,
             
@@ -47,13 +52,15 @@ workflow SV_Integration_UltralongAnnotate {
 
             ins2dup_bin_length = ins2dup_bin_length,
             ins2dup_bin_coverage_ratio = ins2dup_bin_coverage_ratio,
-            
+            convert_ins_to_dup = convert_ins_to_dup,
+
             custom_n_coverage_bins = custom_n_coverage_bins,
             custom_breakpoint_window_bp = custom_breakpoint_window_bp,
             custom_min_clip_length = custom_min_clip_length,
             custom_adjacency_slack_bp = custom_adjacency_slack_bp,
     
             feature_extraction_py = feature_extraction_py,
+            use_cutefc = use_cutefc,
 
             tr_bed = tr_bed,
             segdup_bed = segdup_bed,
@@ -69,7 +76,7 @@ workflow SV_Integration_UltralongAnnotate {
 }
 
 
-# Performance on a 4-core, 8GB VM.
+# Performance on 15x HPRC+HGSVC samples using a 4-core, 8GB VM.
 #
 # TOOL                                                CPU     RAM     TIME
 # BAM download                                                          5m
@@ -100,7 +107,7 @@ workflow SV_Integration_UltralongAnnotate {
 #
 task Impl {
     input {
-        File chunk_csv
+        File chunk_tsv
         String remote_indir
         String remote_outdir
         
@@ -109,6 +116,7 @@ task Impl {
 
         Int ins2dup_bin_length
         Float ins2dup_bin_coverage_ratio
+        Int convert_ins_to_dup
         
         Int custom_n_coverage_bins
         Int custom_breakpoint_window_bp
@@ -116,6 +124,7 @@ task Impl {
         Int custom_adjacency_slack_bp
 
         File feature_extraction_py
+        Int use_cutefc
 
         File tr_bed
         File segdup_bed
@@ -150,14 +159,14 @@ task Impl {
         # ----------------------- Steps of the pipeline ------------------------
         
         # @param 
-        # $2 A row of `chunk_csv`.
+        # $2 A row of `chunk_tsv`.
         #
         function LocalizeSample() {
             local SAMPLE_ID=$1
             local LINE=$2
             
-            local ALIGNED_BAI=$(echo ${LINE} | cut -d , -f 2)
-            local ALIGNED_BAM=$(echo ${LINE} | cut -d , -f 3)
+            local ALIGNED_BAI=$(echo ${LINE} | cut -d , -f 3)
+            local ALIGNED_BAM=$(echo ${LINE} | cut -d , -f 4)
             
             ${TIME_COMMAND} gcloud storage cp ${ALIGNED_BAM} ./${SAMPLE_ID}.bam
             gcloud storage cp ${ALIGNED_BAI} ./${SAMPLE_ID}.bam.bai
@@ -185,8 +194,6 @@ task Impl {
         function CanonizeVcf() {
             local SAMPLE_ID=$1
             local INPUT_VCF_GZ=$2
-            
-            local DEFAULT_QUAL="60"   # Arbitrary
             
             # 1. Removing SVLEN from symbolic ALTs and fixing END.
             # This is necessary for `truvari bench` to work on symbolic records:
@@ -442,7 +449,7 @@ LL_RL=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_left_leftmax
 LL_RR=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_left_leftmaximal_sorted.txt ${LL} 1 ${ID}_right_rightmaximal_sorted.txt ${RR} 0 ${ADJACENCY_SLACK_BP} 0 | tr ',' '\t')
 LR_RL=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_left_rightmaximal_sorted.txt ${LR} 0 ${ID}_right_leftmaximal_sorted.txt ${RL} 1 ${ADJACENCY_SLACK_BP} 0 | tr ',' '\t')
 LR_RR=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_left_rightmaximal_sorted.txt ${LR} 0 ${ID}_right_rightmaximal_sorted.txt ${RR} 0 ${ADJACENCY_SLACK_BP} 0 | tr ',' '\t')
-echo -e "${ID}\t${LL}\t${LR}\t${RL}\t${RR}\t${LL_RL}\t${LL_RR}\t${LR_RL}\t${LR_RR}" >> ${ID}_counts.txt
+echo -e "${ID}\t${LL}\t${LR}\t${RL}\t${RR}\t${LL_RL}\t${LL_RR}\t${LR_RL}\t${LR_RR}" > ${ID}_counts.txt
 rm -f ${ID}_*maximal_sorted.txt
 END
         chmod +x annotate_clipped_alignments_2_interval.sh
@@ -461,7 +468,7 @@ PR=$(wc -l < ${ID}_point_rightmaximal_sorted.txt)
 PL_PL=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_point_leftmaximal_sorted.txt ${PL} 1 ${ID}_point_leftmaximal_sorted.txt ${PL} 1 ${ADJACENCY_SLACK_BP} 1 | tr ',' '\t')
 PL_PR=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_point_leftmaximal_sorted.txt ${PL} 1 ${ID}_point_rightmaximal_sorted.txt ${PR} 0 ${ADJACENCY_SLACK_BP} 1 | tr ',' '\t')
 PR_PR=$(java -cp ${CLASSPATH} UltralongIntervalIntersectClips ${ID}_point_rightmaximal_sorted.txt ${PR} 0 ${ID}_point_rightmaximal_sorted.txt ${PR} 0 ${ADJACENCY_SLACK_BP} 1 | tr ',' '\t')
-echo -e "${ID}\t${PL}\t${PR}\t${PL_PL}\t${PL_PR}\t${PR_PR}" >> ${ID}_counts.txt
+echo -e "${ID}\t${PL}\t${PR}\t${PL_PL}\t${PL_PR}\t${PR_PR}" > ${ID}_counts.txt
 rm -f ${ID}_*maximal_sorted.txt
 END
         chmod +x annotate_clipped_alignments_2_point.sh
@@ -482,7 +489,7 @@ END
             ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_bins.wsv --max-lines=1 --max-procs=${N_THREADS} ./annotate_clipped_alignments_1.sh ${INPUT_BAM} ~{docker_dir} ${MIN_CLIP_LENGTH}
             rm -f ${SAMPLE_ID}_bins.wsv
             ${TIME_COMMAND} bcftools query --format '%ID\n' ${INPUT_VCF} > ${SAMPLE_ID}_variantID.txt
-            rm -f *_counts.tsv
+            rm -f *_counts.txt
             ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_variantID.txt --max-lines=1 --max-procs=${N_THREADS} ./annotate_clipped_alignments_2_interval.sh ~{docker_dir} ${ADJACENCY_SLACK_BP}
             rm -f ${SAMPLE_ID}_variantID.txt
             cat *_counts.txt | sort -k 1,1 > ${SAMPLE_ID}_counts.tsv
@@ -532,7 +539,7 @@ END
             ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_bins.wsv --max-lines=1 --max-procs=${N_THREADS} ./annotate_clipped_alignments_1.sh ${INPUT_BAM} ~{docker_dir} ${MIN_CLIP_LENGTH}
             rm -f ${SAMPLE_ID}_bins.wsv
             ${TIME_COMMAND} bcftools query --format '%ID\n' ${INPUT_VCF} > ${SAMPLE_ID}_variantID.txt
-            rm -f *_counts.tsv
+            rm -f *_counts.txt
             ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_variantID.txt --max-lines=1 --max-procs=${N_THREADS} ./annotate_clipped_alignments_2_point.sh ~{docker_dir} ${ADJACENCY_SLACK_BP}
             rm -f ${SAMPLE_ID}_variantID.txt
             cat *_counts.txt | sort -k 1,1 > ${SAMPLE_ID}_counts.tsv
@@ -796,7 +803,7 @@ END
                 else if ($12=="+-") STRAND=2; \
                 else if ($12=="++") STRAND=3; \
                 \
-                printf("%s\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\n",$1,$2,$3,GT_COUNT,GQ,DR,DV,PL_1,PL_2,PL_3,CIPOS_1,CIPOS_2,CILEN_1,CILEN_2,RE,STRAND); \
+                printf("%s\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",$1,$2,$3,GT_COUNT,GQ,DR,DV,PL_1,PL_2,PL_3,CIPOS_1,CIPOS_2,CILEN_1,CILEN_2,RE,STRAND); \
             }' | bgzip -c > ${SAMPLE_ID}_cutefc_annotations.tsv.gz
             rm -f ${SAMPLE_ID}_cutefc.vcf
             tabix -@ ${N_THREADS} -f -s1 -b2 -e2 ${SAMPLE_ID}_cutefc_annotations.tsv.gz
@@ -867,7 +874,7 @@ END
             ${TIME_COMMAND} bedtools intersect -wa -u -a ${POINT_BED} -b ${TRACK_BED} | awk 'BEGIN { FS="\t"; OFS="\t"; } { printf("%s\t%d\t%s\t1\n",$1,$2,$4); }' > ${SAMPLE_ID}_${POINT_ID}_track.tsv
             ${TIME_COMMAND} bedtools intersect -wa -v -a ${POINT_BED} -b ${TRACK_BED} | awk 'BEGIN { FS="\t"; OFS="\t"; } { printf("%s\t%d\t%s\t0\n",$1,$2,$4); }' >> ${SAMPLE_ID}_${POINT_ID}_track.tsv
             sort -k 1,1 -k 2,2n ${SAMPLE_ID}_${POINT_ID}_track.tsv | bgzip > ${SAMPLE_ID}_${POINT_ID}_track.tsv.gz
-            tabix -@ ${N_THREADS} -f -s1 -b2 -e2 ${SAMPLE_ID}_${POINT_ID}_track.tsv.gz
+            tabix -@ ${N_THREADS} -0 -f -s1 -b2 -e2 ${SAMPLE_ID}_${POINT_ID}_track.tsv.gz
             echo '##INFO=<ID='${POINT_ID}'_'${TRACK_ID}',Number=1,Type=Integer,Description="'${POINT_ID}' breakpoint is contained in a '${TRACK_ID}'">' > ${SAMPLE_ID}_header.txt
             COLUMNS='CHROM,POS,~ID,INFO/'${POINT_ID}'_'${TRACK_ID}
             ${TIME_COMMAND} bcftools annotate --threads ${N_THREADS} --annotations ${SAMPLE_ID}_${POINT_ID}_track.tsv.gz --header-lines ${SAMPLE_ID}_header.txt --columns ${COLUMNS} --output-type v ${INPUT_VCF} --output ${SAMPLE_ID}_annotated.vcf
@@ -886,7 +893,7 @@ END
             ${TIME_COMMAND} bedtools intersect -wa -u -f ${OVERLAP_FRACTION} -a ${INTERVAL_BED} -b ${TRACK_BED} | awk 'BEGIN { FS="\t"; OFS="\t"; } { printf("%s\t%d\t%s\t1\n",$1,$2,$4); }' > ${SAMPLE_ID}_interval_track.tsv
             ${TIME_COMMAND} bedtools intersect -wa -v -f ${OVERLAP_FRACTION} -a ${INTERVAL_BED} -b ${TRACK_BED} | awk 'BEGIN { FS="\t"; OFS="\t"; } { printf("%s\t%d\t%s\t0\n",$1,$2,$4); }' >> ${SAMPLE_ID}_interval_track.tsv
             sort -k 1,1 -k 2,2n ${SAMPLE_ID}_interval_track.tsv | bgzip > ${SAMPLE_ID}_interval_track.tsv.gz
-            tabix -@ ${N_THREADS} -f -s1 -b2 -e2 ${SAMPLE_ID}_interval_track.tsv.gz
+            tabix -@ ${N_THREADS} -0 -f -s1 -b2 -e2 ${SAMPLE_ID}_interval_track.tsv.gz
             echo '##INFO=<ID=INTERVAL_'${TRACK_ID}',Number=1,Type=Integer,Description="Interval overlaps the '${TRACK_ID}' track by at least '${OVERLAP_FRACTION}'">' > ${SAMPLE_ID}_header.txt
             COLUMNS='CHROM,POS,~ID,INFO/INTERVAL_'${TRACK_ID}
             ${TIME_COMMAND} bcftools annotate --threads ${N_THREADS} --annotations ${SAMPLE_ID}_interval_track.tsv.gz --header-lines ${SAMPLE_ID}_header.txt --columns ${COLUMNS} --output-type v ${INPUT_VCF} --output ${SAMPLE_ID}_annotated.vcf
@@ -954,11 +961,12 @@ CLASSPATH=$1
 INPUT_BAM=$2
 BIN_LENGTH=$3
 BIN_COVERAGE_RATIO=$4
-REGION=$5
-ID=$6
+RAM_MB=$5
+REGION=$6
+ID=$7
 
 samtools depth -aa -r ${REGION} ${INPUT_BAM} -o ${ID}_depth.tsv
-java -cp ${CLASSPATH} UltralongDepthGetBreakpoints ${ID}_depth.tsv $(wc -l < ${ID}_depth.tsv) ${BIN_LENGTH} ${BIN_COVERAGE_RATIO} > ${ID}_breakpoints.tsv
+java -cp ${CLASSPATH} -Xmx${RAM_MB}m UltralongDepthGetBreakpoints ${ID}_depth.tsv $(wc -l < ${ID}_depth.tsv) ${BIN_LENGTH} ${BIN_COVERAGE_RATIO} > ${ID}_breakpoints.tsv
 rm -f ${ID}_depth.tsv
 END
         chmod +x interval_2_breakpoints.sh
@@ -973,19 +981,29 @@ END
             local INPUT_BAM=$3
             local BIN_LENGTH=$4
             local BIN_COVERAGE_RATIO=$5
+            local DEPTH_N_THREADS=$6
+
+            local RAM_PER_THREAD_MB=$(( ( (~{ram_size_gb} - 1) * 1024) / ${DEPTH_N_THREADS} ))
+
+            if [ ~{convert_ins_to_dup} -eq 1 ]; then
+                local INSDUP_MODE=0
+            else
+                local INSDUP_MODE=1
+            fi
+            local INSDUP_QUAL=1
 
             ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include "SVTYPE=\"INS\"" --output-type v ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_ins.vcf
             local N_INS=$(bcftools query --format '%ID\n' ${SAMPLE_ID}_ins.vcf | wc -l)
             if [ ${N_INS} -eq 0 ]; then
-                ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include "SVTYPE!=\"INS\"" --output-type v ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_not_ins.vcf
+                ${TIME_COMMAND} bcftools view --threads ${N_THREADS} --output-type v ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_not_ins.vcf
                 return
             fi
             ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include "SVTYPE!=\"INS\"" --output-type z ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_not_ins.vcf.gz
             bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
             ${TIME_COMMAND} java -cp ~{docker_dir} UltralongInsGetIntervals ${SAMPLE_ID}_ins.vcf ~{reference_fai} > ${SAMPLE_ID}_ins_intervals.wsv
-            ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_ins_intervals.wsv --max-lines=1 --max-procs=${N_THREADS} ./interval_2_breakpoints.sh ~{docker_dir} ${INPUT_BAM} ${BIN_LENGTH} ${BIN_COVERAGE_RATIO}
+            ${TIME_COMMAND} xargs --arg-file=${SAMPLE_ID}_ins_intervals.wsv --max-lines=1 --max-procs=${DEPTH_N_THREADS} ./interval_2_breakpoints.sh ~{docker_dir} ${INPUT_BAM} ${BIN_LENGTH} ${BIN_COVERAGE_RATIO} ${RAM_PER_THREAD_MB}
             rm -f ${SAMPLE_ID}_ins_intervals.wsv
-            ${TIME_COMMAND} java -cp ~{docker_dir} UltralongInsExtractDups ${SAMPLE_ID}_ins.vcf . ${SAMPLE_ID}_ins_ins.vcf ${SAMPLE_ID}_ins_dup.vcf
+            ${TIME_COMMAND} java -cp ~{docker_dir} UltralongInsExtractDups ${SAMPLE_ID}_ins.vcf . ${SAMPLE_ID}_ins_ins.vcf ${SAMPLE_ID}_ins_dup.vcf ${INSDUP_QUAL} ${INSDUP_MODE}
             rm -f *_breakpoints.tsv
             local N_INS_DUP=$(bcftools query --format '%ID\n' ${SAMPLE_ID}_ins_dup.vcf | wc -l)
             if [ ${N_INS_DUP} -eq 0 ]; then
@@ -994,18 +1012,46 @@ END
                 return
             fi
             rm -f ${SAMPLE_ID}_ins.vcf ; mv ${SAMPLE_ID}_ins_ins.vcf ${SAMPLE_ID}_ins.vcf
-            ${TIME_COMMAND} bcftools sort --output-type z ${SAMPLE_ID}_ins_dup.vcf --output ${SAMPLE_ID}_ins_dup.vcf.gz
-            rm -f ${SAMPLE_ID}_ins_dup.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins_dup.vcf.gz
-            # Merging `ins_dup` and `not_ins`.
-            # Remark: truvari collapse is run with the same parameters as in
-            # `SV_Integration_Workpackage1.wdl`. It collapses ~3-5 variants per
-            # sample.
+            # Merging `ins_dup` and `not_ins` or `ins`.
+            #
+            # Remark: `truvari collapse` is run with the same parameters as in
+            # `SV_Integration_Workpackage1.wdl`. INS->DUP records are assigned
+            # lower QUAL to make truvari choose an original DUP record as a 
+            # cluster representative. If the DUP record has a GT it will be 
+            # selected, since its column after bcftools merge is the first one.
+            # This collapses ~3-5 variants per sample.
+            #
             # Remark: truvari needs `bcftools merge` and it does not work with 
             # `bcftools concat`.
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type z ${SAMPLE_ID}_not_ins.vcf.gz ${SAMPLE_ID}_ins_dup.vcf.gz --output ${SAMPLE_ID}_out.vcf.gz
-            rm -f ${SAMPLE_ID}_not_ins.vcf.gz* ${SAMPLE_ID}_ins_dup.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf.gz ${SAMPLE_ID}_not_ins.vcf.gz ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
-            ${TIME_COMMAND} truvari collapse --input ${SAMPLE_ID}_not_ins.vcf.gz --intra --keep maxqual --refdist 500 --pctseq 0 --pctsize 0.90 --sizemin 0 --sizemax ${INFINITY} --output ${SAMPLE_ID}_out.vcf
-            rm -f ${SAMPLE_ID}_not_ins.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_not_ins.vcf
+            if [ ~{convert_ins_to_dup} -eq 1 ]; then
+                # Adding SVLEN to symbolic ALTs, to avoid overcollapse in
+                # `bcftools merge`.
+                ${TIME_COMMAND} java -cp ~{docker_dir} AddSvlenToSymbolicAlt ${SAMPLE_ID}_ins_dup.vcf > ${SAMPLE_ID}_out.vcf
+                rm -f ${SAMPLE_ID}_ins_dup.vcf ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_ins_dup.vcf
+                ${TIME_COMMAND} java -cp ~{docker_dir} AddSvlenToSymbolicAlt ${SAMPLE_ID}_not_ins.vcf.gz | bgzip --compress-level 1 > ${SAMPLE_ID}_out.vcf.gz
+                rm -f ${SAMPLE_ID}_not_ins.vcf.gz ; mv ${SAMPLE_ID}_out.vcf.gz ${SAMPLE_ID}_not_ins.vcf.gz ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
+                ${TIME_COMMAND} bcftools sort --output-type z ${SAMPLE_ID}_ins_dup.vcf --output ${SAMPLE_ID}_ins_dup.vcf.gz
+                rm -f ${SAMPLE_ID}_ins_dup.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins_dup.vcf.gz
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --merge none --force-samples --output-type v ${SAMPLE_ID}_not_ins.vcf.gz ${SAMPLE_ID}_ins_dup.vcf.gz --output ${SAMPLE_ID}_out.vcf
+                # Removing SVLEN from symbolic ALTs
+                bcftools view --header-only ${SAMPLE_ID}_out.vcf --output ${SAMPLE_ID}_not_ins.vcf
+                ${TIME_COMMAND} bcftools view --no-header ${SAMPLE_ID}_out.vcf | awk 'BEGIN { FS="\t"; OFS="\t"; } { \
+                    if (substr($0,1,1)!="#" && substr($5,1,1)=="<") $5 = substr($5,1,4) ">"; \
+                    printf("%s",$1); \
+                    for (i=2; i<=NF; i++) printf("\t%s",$i); \
+                    printf("\n"); \
+                }' >> ${SAMPLE_ID}_not_ins.vcf
+                rm -f ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_not_ins.vcf.gz* ${SAMPLE_ID}_ins_dup.vcf.gz* ; bgzip --threads ${N_THREADS} --compress-level 1 ${SAMPLE_ID}_not_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
+                ${TIME_COMMAND} truvari collapse --input ${SAMPLE_ID}_not_ins.vcf.gz --intra --keep maxqual --refdist 500 --pctseq 0 --pctsize 0.90 --sizemin 0 --sizemax ${INFINITY} --output ${SAMPLE_ID}_out.vcf
+                rm -f ${SAMPLE_ID}_not_ins.vcf.gz* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_not_ins.vcf
+            else
+                # In this case both VCFs have non-symbolic ALTs
+                ${TIME_COMMAND} bgzip --threads ${N_THREADS} --compress-level 1 ${SAMPLE_ID}_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins.vcf.gz
+                ${TIME_COMMAND} bgzip --threads ${N_THREADS} --compress-level 1 ${SAMPLE_ID}_ins_dup.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins_dup.vcf.gz
+                ${TIME_COMMAND} bcftools concat --allow-overlaps --remove-duplicates --output-type v ${SAMPLE_ID}_ins.vcf.gz ${SAMPLE_ID}_ins_dup.vcf.gz --output ${SAMPLE_ID}_out.vcf
+                rm -f ${SAMPLE_ID}_ins.vcf* ${SAMPLE_ID}_ins_dup.vcf* ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_ins.vcf
+                gunzip ${SAMPLE_ID}_not_ins.vcf.gz
+            fi
         }
         
         
@@ -1013,13 +1059,15 @@ END
         
         # ---------------------------- Main program ----------------------------
         
-        INFINITY="1000000000"
+        INFINITY="1000000000"  # Arbitrary
+        DEFAULT_QUAL="60"   # Arbitrary
         samtools --version 1>&2
         bcftools --version 1>&2
         cuteFC --version 1>&2
         truvari --help 1>&2
         df -h 1>&2
         
+        cat ~{chunk_tsv} | tr '\t' ',' > chunk.csv
         while read -u 3 LINE; do
             # Skipping the sample if it has already been processed
             SAMPLE_ID=$(echo ${LINE} | cut -d , -f 1)
@@ -1032,7 +1080,7 @@ END
             LocalizeSample ${SAMPLE_ID} ${LINE}
             df -h 1>&2
             CanonizeVcf ${SAMPLE_ID} ${SAMPLE_ID}.vcf.gz
-            Ins2Dup ${SAMPLE_ID} ${SAMPLE_ID}_canonized.vcf.gz ${SAMPLE_ID}.bam ~{ins2dup_bin_length} ~{ins2dup_bin_coverage_ratio}
+            Ins2Dup ${SAMPLE_ID} ${SAMPLE_ID}_canonized.vcf.gz ${SAMPLE_ID}.bam ~{ins2dup_bin_length} ~{ins2dup_bin_coverage_ratio} $(( ${N_THREADS} / 2 ))
             rm -f ${SAMPLE_ID}_canonized.vcf.gz
 
             # 2. Adding custom annotations
@@ -1087,9 +1135,10 @@ END
                 rm -f ${SAMPLE_ID}_start.bed
             fi
 
-            # 4. Merging INS and non-INS VCFs
-            ${TIME_COMMAND} bgzip --compress-level 1 ${SAMPLE_ID}_not_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
-            ${TIME_COMMAND} bgzip --compress-level 1 ${SAMPLE_ID}_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins.vcf.gz
+            # 4. Merging INS and non-INS VCFs, so that both of them get
+            # annotated in a single pass over the BAM later.
+            ${TIME_COMMAND} bgzip --threads ${N_THREADS} --compress-level 1 ${SAMPLE_ID}_not_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_not_ins.vcf.gz
+            ${TIME_COMMAND} bgzip --threads ${N_THREADS} --compress-level 1 ${SAMPLE_ID}_ins.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_ins.vcf.gz
             ${TIME_COMMAND} bcftools concat --allow-overlaps --remove-duplicates --output-type v ${SAMPLE_ID}_not_ins.vcf.gz ${SAMPLE_ID}_ins.vcf.gz --output ${SAMPLE_ID}_annotated.vcf
             rm -f ${SAMPLE_ID}_not_ins.vcf* ${SAMPLE_ID}_ins.vcf* ; mv ${SAMPLE_ID}_annotated.vcf ${SAMPLE_ID}_in.vcf
 
@@ -1098,29 +1147,56 @@ END
             # are both slow and use threads inefficiently. In practice this does
             # not decrease total runtime.
             FeatureExtraction ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf ${SAMPLE_ID}.bam 0
-            Cutefc ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf ${SAMPLE_ID}.bam $(( ${N_THREADS} / 2 )) 0
             FeatureExtraction_Annotate ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf
             rm -f ${SAMPLE_ID}_in.vcf ; mv ${SAMPLE_ID}_annotated.vcf ${SAMPLE_ID}_in.vcf
-            Cutefc_Annotate ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf
-            rm -f ${SAMPLE_ID}_in.vcf ; mv ${SAMPLE_ID}_annotated.vcf ${SAMPLE_ID}_in.vcf
+            if [ ~{use_cutefc} -eq 1 ]; then
+                Cutefc ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf ${SAMPLE_ID}.bam $(( ${N_THREADS} / 2 )) 0
+                Cutefc_Annotate ${SAMPLE_ID} ${SAMPLE_ID}_in.vcf
+                rm -f ${SAMPLE_ID}_in.vcf ; mv ${SAMPLE_ID}_annotated.vcf ${SAMPLE_ID}_in.vcf
+            fi
             
+            # Ensuring that the VCF has the correct header
+            bcftools view --header-only ${SAMPLE_ID}_in.vcf > ${SAMPLE_ID}_header.txt
+            FOUND=$(grep -c INSDUP ${SAMPLE_ID}_header.txt || echo "0")
+            if [ ${FOUND} = "0" ]; then
+                N_ROWS=$(wc -l < ${SAMPLE_ID}_header.txt)
+                head -n $(( ${N_ROWS} - 1 )) ${SAMPLE_ID}_header.txt > ${SAMPLE_ID}_header_new.txt
+                echo '##INFO=<ID=INSDUP,Number=0,Type=Flag,Description="The record is the result of an INS-DUP conversion">' >> ${SAMPLE_ID}_header_new.txt
+                echo '##INFO=<ID=INS_POS,Number=1,Type=Integer,Description="The POS of the original INS record">' >> ${SAMPLE_ID}_header_new.txt
+                echo '##INFO=<ID=INS_ALT,Number=1,Type=String,Description="The ALT allele of the original INS record">' >> ${SAMPLE_ID}_header_new.txt
+                echo '##INFO=<ID=INS_QUAL,Number=1,Type=Integer,Description="The QUAL of the original INS record">' >> ${SAMPLE_ID}_header_new.txt
+                tail -n 1 ${SAMPLE_ID}_header.txt >> ${SAMPLE_ID}_header_new.txt
+                bcftools reheader --header ${SAMPLE_ID}_header_new.txt ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_out.vcf
+                rm -f ${SAMPLE_ID}_in.vcf ; mv ${SAMPLE_ID}_out.vcf ${SAMPLE_ID}_in.vcf
+                rm -f ${SAMPLE_ID}_header_new.txt
+            fi
+            rm -f ${SAMPLE_ID}_header.txt
+
             # Splitting by SVTYPE and uploading
-            bcftools filter --include "SVTYPE=\"DEL\"" --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_del.vcf.gz &
-            bcftools filter --include "SVTYPE=\"DUP\"" --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_dup.vcf.gz &
-            bcftools filter --include "SVTYPE=\"INV\"" --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_inv.vcf.gz &
-            bcftools filter --include "SVTYPE=\"INS\"" --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_ins.vcf.gz &
+            bcftools filter --include 'SVTYPE="DEL"' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_del.vcf.gz &
+            bcftools filter --include 'SVTYPE="INV"' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_inv.vcf.gz &
+            if [ ~{convert_ins_to_dup} -eq 1 ]; then
+                bcftools filter --include 'SVTYPE="INS"' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_ins.vcf.gz &
+                bcftools filter --include 'SVTYPE="DUP" && INFO/INSDUP=0' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_dup.vcf.gz &
+                bcftools filter --include 'SVTYPE="DUP" && INFO/INSDUP=1' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_insdup.vcf.gz &
+            else
+                bcftools filter --include 'SVTYPE="DUP"' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_dup.vcf.gz &
+                bcftools filter --include 'SVTYPE="INS" && INFO/INSDUP=0' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_ins.vcf.gz &
+                bcftools filter --include 'SVTYPE="INS" && INFO/INSDUP=1' --output-type z ${SAMPLE_ID}_in.vcf --output ${SAMPLE_ID}_insdup.vcf.gz &
+            fi
             wait
             bcftools index -f -t ${SAMPLE_ID}_del.vcf.gz &
             bcftools index -f -t ${SAMPLE_ID}_dup.vcf.gz &
+            bcftools index -f -t ${SAMPLE_ID}_insdup.vcf.gz &
             bcftools index -f -t ${SAMPLE_ID}_inv.vcf.gz &
             bcftools index -f -t ${SAMPLE_ID}_ins.vcf.gz &
             wait
-            gcloud storage mv ${SAMPLE_ID}_'del.vcf.gz*' ${SAMPLE_ID}_'inv.vcf.gz*' ${SAMPLE_ID}_'dup.vcf.gz*' ${SAMPLE_ID}_'ins.vcf.gz*' ~{remote_outdir}/
+            gcloud storage mv ${SAMPLE_ID}_'del.vcf.gz*' ${SAMPLE_ID}_'inv.vcf.gz*' ${SAMPLE_ID}_'dup.vcf.gz*' ${SAMPLE_ID}_'insdup.vcf.gz*' ${SAMPLE_ID}_'ins.vcf.gz*' ~{remote_outdir}/
             touch ${SAMPLE_ID}.done
             gcloud storage mv ${SAMPLE_ID}.done ~{remote_outdir}/
             DelocalizeSample ${SAMPLE_ID}
             ls -laht 1>&2
-        done 3< ~{chunk_csv}
+        done 3< chunk.csv
     >>>
     
     output {

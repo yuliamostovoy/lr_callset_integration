@@ -1,127 +1,141 @@
 #!/bin/bash
 #
 set -x
-WOMTOOL_PATH="/Users/fcunial/apps/cromwell/womtool-84.jar"
+WOMTOOL_PATH="${WOMTOOL_PATH:-$(command -v womtool)}"
+if [[ -z "${WOMTOOL_PATH}" ]]; then
+    echo "ERROR: Set WOMTOOL_PATH or install womtool on PATH." >&2
+    exit 1
+fi
 
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_UltralongAnnotate.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongAnnotate.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongRecordsInTrack.wdl
-java -jar ${WOMTOOL_PATH} validate -l InsRemap.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongGetTrainingIntervalsSvim.wdl
-java -jar ${WOMTOOL_PATH} validate -l SvimAsm.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongGetTrainingIntervals.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongCanonizeDipcall.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongScore.wdl
-java -jar ${WOMTOOL_PATH} validate -l UltralongMerge.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_UltralongAnalysis.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_RegenotypingAnalysis.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_PlotPrme.wdl
-java -jar ${WOMTOOL_PATH} validate -l InvestigateMaleSamples2.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_PlotHwe.wdl
-java -jar ${WOMTOOL_PATH} validate -l InvestigateMaleSamples.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage15.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage14.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage13.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage12.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage11.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage9.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage8.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage7.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage6.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage5.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage3.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_BuildTrainingResource.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage1.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_PlotHwe_SNVs.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage10.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage8_Prime.wdl
-java -jar ${WOMTOOL_PATH} validate -l CollapseHapsVcf.wdl
-java -jar ${WOMTOOL_PATH} validate -l Trgt2Kanpig.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage2.wdl
-java -jar ${WOMTOOL_PATH} validate -l RegenotypeKanpigHapsVcf.wdl
-java -jar ${WOMTOOL_PATH} validate -l BuildKanpigHapVcf.wdl
-java -jar ${WOMTOOL_PATH} validate -l RegenotypeShapeit4.wdl
-java -jar ${WOMTOOL_PATH} validate -l PhabRegenotypedCohort.wdl
-java -jar ${WOMTOOL_PATH} validate -l SV_Integration_Workpackage5_Bnd.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortSamples_PersonalizedCohortVcf.wdl
-java -jar ${WOMTOOL_PATH} validate -l HGSVC3Dipcall2BAMs.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetCompositeSvs.wdl
-java -jar ${WOMTOOL_PATH} validate -l PersonalizedCohortVcf.wdl
-java -jar ${WOMTOOL_PATH} validate -l Bam2Fastq.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetNCalls2.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetNCalls.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTriosSquish5.wdl
-java -jar ${WOMTOOL_PATH} validate -l CountTrSubstratifications.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTriosSquish4.wdl
-java -jar ${WOMTOOL_PATH} validate -l SubsetToAncestry.wdl
-java -jar ${WOMTOOL_PATH} validate -l FilterTruvariIntersample2.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortSamples_windowed.wdl
-java -jar ${WOMTOOL_PATH} validate -l FilterTruvariIntersample.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTriosSquish3.wdl
-java -jar ${WOMTOOL_PATH} validate -l MapCCSPhase2.wdl
-java -jar ${WOMTOOL_PATH} validate -l MapCCSPhase2Prime.wdl
-java -jar ${WOMTOOL_PATH} validate -l MapR10Phase2.wdl
-java -jar ${WOMTOOL_PATH} validate -l SubsampleAlignedBam.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage9Squish.wdl
-java -jar ${WOMTOOL_PATH} validate -l DeNovoByRegion.wdl
-java -jar ${WOMTOOL_PATH} validate -l PhabTrios.wdl
-java -jar ${WOMTOOL_PATH} validate -l TestKanpigIntersample.wdl
-java -jar ${WOMTOOL_PATH} validate -l TestBetaBinomial3.wdl
-java -jar ${WOMTOOL_PATH} validate -l TestBetaBinomial_Merge.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortSamplesBetaBinomial.wdl
-java -jar ${WOMTOOL_PATH} validate -l TestBetaBinomial2.wdl
-java -jar ${WOMTOOL_PATH} validate -l TestBetaBinomial.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage9Palt.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetGenotypingPriors.wdl
-java -jar ${WOMTOOL_PATH} validate -l FixUnsupportedGts.wdl
-java -jar ${WOMTOOL_PATH} validate -l AnalyzeGtAdMatrix.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetGtAdMatrix.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage9Subsets.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetMapqDistribution.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTriosSquish2.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTriosSquish.wdl
-java -jar ${WOMTOOL_PATH} validate -l PlotHweFocusedTruvariCollapse.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortTrios.wdl
-java -jar ${WOMTOOL_PATH} validate -l PlotHweFocusedAc.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchCohortSamples.wdl
-java -jar ${WOMTOOL_PATH} validate -l PlotHweFocused.wdl
-java -jar ${WOMTOOL_PATH} validate -l MapR10Phase2ScatteredLrhq.wdl
-java -jar ${WOMTOOL_PATH} validate -l MapR10Phase2Scattered.wdl
-java -jar ${WOMTOOL_PATH} validate -l AddReadGroup.wdl
-java -jar ${WOMTOOL_PATH} validate -l DownloadAssembly.wdl
-java -jar ${WOMTOOL_PATH} validate -l SubsampleSimple.wdl
-java -jar ${WOMTOOL_PATH} validate -l ReadLengthDistribution.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetLongCalls.wdl
-java -jar ${WOMTOOL_PATH} validate -l CheckDeNovo.wdl
-java -jar ${WOMTOOL_PATH} validate -l BenchHprcSamples.wdl
-java -jar ${WOMTOOL_PATH} validate -l GetPresentCalls.wdl
-java -jar ${WOMTOOL_PATH} validate -l InterCenterMerge.wdl
-java -jar ${WOMTOOL_PATH} validate -l CheckMendelian.wdl
-java -jar ${WOMTOOL_PATH} validate -l PlotHwe.wdl
-java -jar ${WOMTOOL_PATH} validate -l QcPlots.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage13.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage12.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage11.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage10.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage9.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage8.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage7.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage6.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage5.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage4.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage3.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage2.wdl
-java -jar ${WOMTOOL_PATH} validate -l Workpackage1.wdl
-java -jar ${WOMTOOL_PATH} validate -l InterCenterBench.wdl
-java -jar ${WOMTOOL_PATH} validate -l PasteGTs.wdl
-java -jar ${WOMTOOL_PATH} validate -l KanpigMerged.wdl
-java -jar ${WOMTOOL_PATH} validate -l RemoveSamples.wdl
-java -jar ${WOMTOOL_PATH} validate -l TruvariIntersamplePhase2.wdl
-java -jar ${WOMTOOL_PATH} validate -l Split.wdl
-java -jar ${WOMTOOL_PATH} validate -l HGSVC3ExtractHapsFromAssemblies.wdl
-java -jar ${WOMTOOL_PATH} validate -l DipcallPhase2.wdl
-java -jar ${WOMTOOL_PATH} validate -l FilterIntrasampleDevPhase2.wdl
-java -jar ${WOMTOOL_PATH} validate -l Kanpig.wdl
-java -jar ${WOMTOOL_PATH} validate -l TruvariIntrasample.wdl
-java -jar ${WOMTOOL_PATH} validate -l Resolve.wdl
-java -jar ${WOMTOOL_PATH} validate -l PAV2SVs.wdl
+if [[ "${WOMTOOL_PATH}" == *.jar ]]; then
+    WOMTOOL=(java -jar "${WOMTOOL_PATH}")
+else
+    WOMTOOL=("${WOMTOOL_PATH}")
+fi
+
+"${WOMTOOL[@]}" validate -l SV_Integration_UltralongAnnotate.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_BndAnnotate.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_BndGetTrainingIntervals.wdl
+"${WOMTOOL[@]}" validate -l UltralongAnnotate.wdl
+"${WOMTOOL[@]}" validate -l UltralongRecordsInTrack.wdl
+"${WOMTOOL[@]}" validate -l InsRemap.wdl
+"${WOMTOOL[@]}" validate -l UltralongGetTrainingIntervalsSvim.wdl
+"${WOMTOOL[@]}" validate -l SvimAsm.wdl
+"${WOMTOOL[@]}" validate -l UltralongGetTrainingIntervals.wdl
+"${WOMTOOL[@]}" validate -l UltralongCanonizeDipcall.wdl
+"${WOMTOOL[@]}" validate -l UltralongScore.wdl
+"${WOMTOOL[@]}" validate -l UltralongMerge.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_UltralongAnalysis.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_RegenotypingAnalysis.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_PlotPrme.wdl
+"${WOMTOOL[@]}" validate -l InvestigateMaleSamples2.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_PlotHwe.wdl
+"${WOMTOOL[@]}" validate -l InvestigateMaleSamples.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage15.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage14.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage13.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage12.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage11.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage9.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage8.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage9_families.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage9_trios.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage7.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage6.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage5.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage3.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_BuildTrainingResource.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage1.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_PlotHwe_SNVs.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage10.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage8_Prime.wdl
+"${WOMTOOL[@]}" validate -l CollapseHapsVcf.wdl
+"${WOMTOOL[@]}" validate -l Trgt2Kanpig.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage2.wdl
+"${WOMTOOL[@]}" validate -l RegenotypeKanpigHapsVcf.wdl
+"${WOMTOOL[@]}" validate -l BuildKanpigHapVcf.wdl
+"${WOMTOOL[@]}" validate -l RegenotypeShapeit4.wdl
+"${WOMTOOL[@]}" validate -l PhabRegenotypedCohort.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage5_Bnd.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortSamples_PersonalizedCohortVcf.wdl
+"${WOMTOOL[@]}" validate -l HGSVC3Dipcall2BAMs.wdl
+"${WOMTOOL[@]}" validate -l GetCompositeSvs.wdl
+"${WOMTOOL[@]}" validate -l PersonalizedCohortVcf.wdl
+"${WOMTOOL[@]}" validate -l Bam2Fastq.wdl
+"${WOMTOOL[@]}" validate -l GetNCalls2.wdl
+"${WOMTOOL[@]}" validate -l GetNCalls.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTriosSquish5.wdl
+"${WOMTOOL[@]}" validate -l CountTrSubstratifications.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTriosSquish4.wdl
+"${WOMTOOL[@]}" validate -l SubsetToAncestry.wdl
+"${WOMTOOL[@]}" validate -l FilterTruvariIntersample2.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortSamples_windowed.wdl
+"${WOMTOOL[@]}" validate -l FilterTruvariIntersample.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTriosSquish3.wdl
+"${WOMTOOL[@]}" validate -l MapCCSPhase2.wdl
+"${WOMTOOL[@]}" validate -l MapCCSPhase2Prime.wdl
+"${WOMTOOL[@]}" validate -l MapR10Phase2.wdl
+"${WOMTOOL[@]}" validate -l SubsampleAlignedBam.wdl
+"${WOMTOOL[@]}" validate -l Workpackage9Squish.wdl
+"${WOMTOOL[@]}" validate -l DeNovoByRegion.wdl
+"${WOMTOOL[@]}" validate -l PhabTrios.wdl
+"${WOMTOOL[@]}" validate -l TestKanpigIntersample.wdl
+"${WOMTOOL[@]}" validate -l TestBetaBinomial3.wdl
+"${WOMTOOL[@]}" validate -l TestBetaBinomial_Merge.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortSamplesBetaBinomial.wdl
+"${WOMTOOL[@]}" validate -l TestBetaBinomial2.wdl
+"${WOMTOOL[@]}" validate -l TestBetaBinomial.wdl
+"${WOMTOOL[@]}" validate -l Workpackage9Palt.wdl
+"${WOMTOOL[@]}" validate -l GetGenotypingPriors.wdl
+"${WOMTOOL[@]}" validate -l FixUnsupportedGts.wdl
+"${WOMTOOL[@]}" validate -l AnalyzeGtAdMatrix.wdl
+"${WOMTOOL[@]}" validate -l GetGtAdMatrix.wdl
+"${WOMTOOL[@]}" validate -l Workpackage9Subsets.wdl
+"${WOMTOOL[@]}" validate -l GetMapqDistribution.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTriosSquish2.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTriosSquish.wdl
+"${WOMTOOL[@]}" validate -l PlotHweFocusedTruvariCollapse.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortTrios.wdl
+"${WOMTOOL[@]}" validate -l PlotHweFocusedAc.wdl
+"${WOMTOOL[@]}" validate -l BenchCohortSamples.wdl
+"${WOMTOOL[@]}" validate -l PlotHweFocused.wdl
+"${WOMTOOL[@]}" validate -l MapR10Phase2ScatteredLrhq.wdl
+"${WOMTOOL[@]}" validate -l MapR10Phase2Scattered.wdl
+"${WOMTOOL[@]}" validate -l AddReadGroup.wdl
+"${WOMTOOL[@]}" validate -l DownloadAssembly.wdl
+"${WOMTOOL[@]}" validate -l SubsampleSimple.wdl
+"${WOMTOOL[@]}" validate -l ReadLengthDistribution.wdl
+"${WOMTOOL[@]}" validate -l GetLongCalls.wdl
+"${WOMTOOL[@]}" validate -l CheckDeNovo.wdl
+"${WOMTOOL[@]}" validate -l BenchHprcSamples.wdl
+"${WOMTOOL[@]}" validate -l GetPresentCalls.wdl
+"${WOMTOOL[@]}" validate -l InterCenterMerge.wdl
+"${WOMTOOL[@]}" validate -l CheckMendelian.wdl
+"${WOMTOOL[@]}" validate -l PlotHwe.wdl
+"${WOMTOOL[@]}" validate -l QcPlots.wdl
+"${WOMTOOL[@]}" validate -l Workpackage13.wdl
+"${WOMTOOL[@]}" validate -l Workpackage12.wdl
+"${WOMTOOL[@]}" validate -l Workpackage11.wdl
+"${WOMTOOL[@]}" validate -l Workpackage10.wdl
+"${WOMTOOL[@]}" validate -l Workpackage9.wdl
+"${WOMTOOL[@]}" validate -l Workpackage8.wdl
+"${WOMTOOL[@]}" validate -l Workpackage7.wdl
+"${WOMTOOL[@]}" validate -l Workpackage6.wdl
+"${WOMTOOL[@]}" validate -l Workpackage5.wdl
+"${WOMTOOL[@]}" validate -l Workpackage4.wdl
+"${WOMTOOL[@]}" validate -l Workpackage3.wdl
+"${WOMTOOL[@]}" validate -l Workpackage2.wdl
+"${WOMTOOL[@]}" validate -l Workpackage1.wdl
+"${WOMTOOL[@]}" validate -l InterCenterBench.wdl
+"${WOMTOOL[@]}" validate -l PasteGTs.wdl
+"${WOMTOOL[@]}" validate -l KanpigMerged.wdl
+"${WOMTOOL[@]}" validate -l RemoveSamples.wdl
+"${WOMTOOL[@]}" validate -l TruvariIntersamplePhase2.wdl
+"${WOMTOOL[@]}" validate -l Split.wdl
+"${WOMTOOL[@]}" validate -l HGSVC3ExtractHapsFromAssemblies.wdl
+"${WOMTOOL[@]}" validate -l DipcallPhase2.wdl
+"${WOMTOOL[@]}" validate -l FilterIntrasampleDevPhase2.wdl
+"${WOMTOOL[@]}" validate -l Kanpig.wdl
+"${WOMTOOL[@]}" validate -l TruvariIntrasample.wdl
+"${WOMTOOL[@]}" validate -l Resolve.wdl
+"${WOMTOOL[@]}" validate -l PAV2SVs.wdl
