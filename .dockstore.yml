@@ -200,3 +200,23 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_Workpackage15.wdl
   testParameterFiles:
+- name: PAV_BcftoolsMerge_1_Split
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/PAV_BcftoolsMerge_1_Split.wdl
+  testParameterFiles:
+- name: PAV_BcftoolsMerge_2_Merge
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/PAV_BcftoolsMerge_2_Merge.wdl
+  testParameterFiles:
+- name: PAV_BcftoolsMerge_3_Concat
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/PAV_BcftoolsMerge_3_Concat.wdl
+  testParameterFiles:
+- name: PAV_BcftoolsMerge_Orchestrator
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/PAV_BcftoolsMerge_Orchestrator.wdl
+  testParameterFiles:
