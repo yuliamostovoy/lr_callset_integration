@@ -37,16 +37,29 @@ table, and stages 2/3 only need *(the same CSV + the previous stage's GCS dir)*.
 ## What each stage does
 
 - **Stage 1 (Split).** Root entity `sample_set`. Batches the cohort in-WDL
-  (`batch_size` samples per VM). Per sample: localize → reheader to `sample_id`
-  → **`bcftools norm -f ref -m -any`** (left-align + split multiallelics) → split
-  into chunks with `bcftools view --targets-file` (POS-only) → upload
-  `chunk_<i>/<sample>.bcf`.
+  (`batch_size` samples per VM), then runs two SEPARATE tasks per batch:
+  - **`NormalizeBatch`** (expensive, CSV-independent): per sample localize →
+    reheader to `sample_id` → **`bcftools norm -f ref -m -any`** (left-align +
+    split multiallelics) → upload `<norm_remote_dir>/<sample>.bcf`. Skips any
+    sample already present in `norm_remote_dir`.
+  - **`ChunkBatch`** (cheap, CSV-dependent): localize the normalized BCF → slice
+    with `bcftools view --targets-file` (POS-only) → upload
+    `chunk_<i>/<sample>.bcf`.
 
   Normalization runs **before** chunking so every record is at its final
   canonical position before chunk assignment; otherwise an indel could
   left-align across a chunk boundary and fragment the same variant across
   chunks. Every sample emits a (possibly empty) BCF for every chunk, because the
   merge and concat require an identical sample set/order in every chunk.
+
+  **Reuse:** normalization is the CPU-heavy step and does not depend on the
+  chunk partition, so it is a separate task writing to a **stable
+  `norm_remote_dir`**. Point every run (pilot and full, and any chunk-size
+  retune) at the SAME `norm_remote_dir`; `NormalizeBatch` existence-skips samples
+  already there, so only the cheap `ChunkBatch` re-runs. This is more reliable
+  than Cromwell call caching here: because these tasks upload via `gcloud`
+  inside the command, the CSV content and output path are in the cache key, so a
+  changed CSV or output dir misses — the existence-check does not.
 
 - **Stage 2 (Merge).** One `MergeChunk` VM per chunk: verify #files == #samples,
   `SumFileSizes` disk pre-check, localize, **two-level `bcftools merge --merge

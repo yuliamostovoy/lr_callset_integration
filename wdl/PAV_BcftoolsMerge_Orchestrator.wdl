@@ -27,6 +27,7 @@ workflow PAV_BcftoolsMerge_Orchestrator {
         File reference_fai
         File split_for_bcftools_merge_csv
 
+        String norm_remote_dir
         String remote_outdir
 
         Int batch_size = 100
@@ -47,6 +48,7 @@ workflow PAV_BcftoolsMerge_Orchestrator {
         sample_ids: "From the data table, e.g. `this.samples.sample_id`. Parallel to `pav_vcfs`."
         pav_vcfs: "From the data table, e.g. `this.samples.pav_vcf`. Array[String] gs:// URIs (streamed in-task)."
         split_for_bcftools_merge_csv: "0-based half-open chunk partition; chunk id == 0-based line number. Ship the ~5 Mbp CSV for the SNV-inclusive callset."
+        norm_remote_dir: "Without final slash. STABLE location for normalized per-sample BCFs, reused across runs. Keep it constant (independent of `remote_outdir`) so re-chunking / pilot->full never re-normalizes."
         remote_outdir: "Without final slash. Stages write to `<remote_outdir>/01_split`, `/02_merge`, `/03_concat`."
     }
 
@@ -62,6 +64,7 @@ workflow PAV_BcftoolsMerge_Orchestrator {
             reference_fai = reference_fai,
             split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
             batch_size = batch_size,
+            norm_remote_dir = norm_remote_dir,
             remote_outdir = split_outdir,
             left_align_and_split = left_align_and_split,
             check_ref = check_ref,
