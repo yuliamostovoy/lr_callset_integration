@@ -5,17 +5,7 @@ version 1.0
 #
 # Concatenates the merged chunks into ONE BCF PER PRIMARY CONTIG (chr1-22, X, Y).
 # There is deliberately no genome-wide concat: at 13k samples with SNVs a single
-# genome-wide BCF is ~1 TB, which is unwieldy to build and consume. Per-contig
-# BCFs are the pipeline's final deliverable; downstream tools that want finer
-# granularity can also consume stage 2's per-chunk BCFs directly.
-#
-# Which chunks belong to which contig (and in what order) is DERIVED from the
-# split CSV -- chunk id == 0-based line number, CSV sorted by position -- so no
-# chunk list is passed by hand. Point it at stage 2's output dir.
-#
-# `bcftools concat --naive` is byte-level (no re-compression), so it is I/O
-# bound; disk (inputs + output, ~2x the contig's merged size, dominated by the
-# densest contig ~chr1) is the binding constraint, not CPU/RAM.
+# genome-wide BCF is ~1 TB, which is unwieldy to build and consume. 
 #
 workflow PAV_BcftoolsMerge_3_Concat {
     input {

@@ -4,35 +4,9 @@ version 1.0
 # STAGE 1 of the PAV whole-callset (SNV+indel+SV) `bcftools merge` pipeline.
 #
 # Given a Terra data table of samples (sample_id + PAV VCF URI), this workflow
-# splits the cohort into batches of `batch_size` IN-WDL (no manual batch TSVs,
-# no per-batch sample_sets) and, per batch, runs two SEPARATE tasks:
-#
-#   NormalizeBatch  (expensive, CSV-independent, reusable)
-#     localize -> reheader to `sample_id` -> `bcftools norm -f ref -m -any`
-#     (left-align + split multiallelics) -> upload `<norm_remote_dir>/<sample>.bcf`.
-#     Skips any sample already present in `norm_remote_dir`.
-#
-#   ChunkBatch  (cheap, CSV-dependent)
-#     localize the normalized BCF -> slice into the chunks defined by the CSV
-#     (`bcftools view --targets-file`, POS-only) -> upload `chunk_<i>/<sample>.bcf`.
-#
-# Why two tasks: normalization is the CPU-heavy step and its result does NOT
-# depend on the chunk partition, whereas chunking is cheap and DOES. Keeping
-# them separate means retuning the chunk size (or going pilot -> full) only
-# re-runs the cheap ChunkBatch; NormalizeBatch is reused. Reuse is driven by an
-# existence-check on the stable `norm_remote_dir` (robust regardless of Cromwell
-# call caching, which these gcloud-side-effect tasks can't rely on because the
-# output path and CSV are baked into the command/cache key). Point every run at
-# the SAME `norm_remote_dir` to get that reuse.
-#
-# Normalization MUST precede chunking so every record is at its final canonical
-# position before chunk assignment; otherwise an indel could left-align across a
-# chunk boundary and fragment the same variant across chunks at merge time.
-#
-# Phase-safe: `-m -any` only ever SPLITS multiallelics (never joins), preserving
-# the `|` separator, haplotype assignment, and PS tags through both splitting and
-# left-alignment; the downstream merge uses `--merge none`.
-#
+# splits the cohort into batches of `batch_size` and, per batch, runs bcftools norm 
+# and slices the normalized BCFs into chunks defined by a CSV.
+
 workflow PAV_BcftoolsMerge_1_Split {
     input {
         Array[String] sample_ids

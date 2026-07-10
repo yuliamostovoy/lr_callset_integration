@@ -8,11 +8,26 @@ version 1.0
 # number), and the workflow scatters over `range(n_chunks)` in a single
 # submission -- no hand-listed chunk ids and no data table required here.
 #
-# Per chunk (mirrors SV_Integration_Workpackage3), on one VM:
-#   1. Verify the chunk dir has exactly one BCF per sample.
+# Sourced from up to six independently-run stage-1 outputs, one per center/
+# control set (bi, ha, bcm, uw, controls_15x, controls_30x) -- this mirrors
+# SV_Integration_Workpackage5's InterCenter merge pattern exactly, including
+# its overlap-resolution rule: a sample present in more than one source is
+# resolved by LOCALIZATION ORDER (bi, then ha, then uw, then bcm, then the
+# controls -- each later source silently overwrites an earlier source's file
+# for the same sample_id), with one explicit override: `bi_samples_to_prefer_over_ha`
+# lists sample_ids for which bi's copy is re-localized after ha, flipping the
+# winner back to bi for exactly those samples. There is no equivalent override
+# for uw/bcm/controls; whichever source is localized last always wins for a
+# sample it shares with an earlier source.
+#
+# Per chunk (mirrors SV_Integration_Workpackage5's Impl task), on one VM:
+#   1. Verify each source's chunk dir has exactly the expected number of BCFs
+#      (n_expected_samples_<source>; controls may exceed their expected count,
+#      which only warns).
 #   2. Fail fast if the inputs won't fit on disk (`SumFileSizes`).
-#   3. Localize all per-sample BCFs (already reheadered + indexed by stage 1, so
-#      no reheader/re-index here).
+#   3. Localize all per-sample BCFs in source order (already reheadered +
+#      indexed by stage 1, so no reheader/re-index here), applying the
+#      bi_samples_to_prefer_over_ha override last.
 #   4. Two-level hierarchical `bcftools merge --merge none` (batches of
 #      `n_files_per_merge`, then a merge-of-merges).
 #   5. Split any residual multiallelics with `bcftools norm --do-not-normalize
@@ -27,7 +42,23 @@ version 1.0
 workflow PAV_BcftoolsMerge_2_Merge {
     input {
         File split_for_bcftools_merge_csv
-        String remote_indir
+
+        String remote_indir_bi
+        String remote_indir_ha
+        String remote_indir_bcm
+        String remote_indir_uw
+        String remote_indir_controls_15x
+        String remote_indir_controls_30x
+
+        Array[String] bi_samples_to_prefer_over_ha
+
+        Int n_expected_samples_bi
+        Int n_expected_samples_ha
+        Int n_expected_samples_bcm
+        Int n_expected_samples_uw
+        Int n_expected_samples_controls_15x
+        Int n_expected_samples_controls_30x
+
         String remote_outdir
 
         File? sample_ids_file
@@ -41,9 +72,21 @@ workflow PAV_BcftoolsMerge_2_Merge {
     }
     parameter_meta {
         split_for_bcftools_merge_csv: "The SAME CSV used in stage 1. Its line count is the number of chunks; chunk id == 0-based line number."
-        remote_indir: "Without final slash. Stage 1's output dir (contains `chunk_<i>/<sample>.bcf` and `sample_ids.txt`)."
+        remote_indir_bi: "Without final slash. bi's stage-1 output dir (contains `chunk_<i>/<sample>.bcf` and `sample_ids.txt`). Set n_expected_samples_bi=0 and this to anything if bi is unused."
+        remote_indir_ha: "Without final slash. ha's stage-1 output dir. Set n_expected_samples_ha=0 if unused."
+        remote_indir_bcm: "Without final slash. bcm's stage-1 output dir. Set n_expected_samples_bcm=0 if unused."
+        remote_indir_uw: "Without final slash. uw's stage-1 output dir. Set n_expected_samples_uw=0 if unused."
+        remote_indir_controls_15x: "Without final slash. 15x-controls stage-1 output dir. Set n_expected_samples_controls_15x=0 if unused."
+        remote_indir_controls_30x: "Without final slash. 30x-controls stage-1 output dir. Set n_expected_samples_controls_30x=0 if unused."
+        bi_samples_to_prefer_over_ha: "sample_ids present in BOTH bi and ha for which bi's copy should win instead of the default (ha wins on overlap). No effect on samples not present in both."
+        n_expected_samples_bi: "Exact expected file count in bi's chunk dirs. 0 disables bi entirely."
+        n_expected_samples_ha: "Exact expected file count in ha's chunk dirs. 0 disables ha entirely."
+        n_expected_samples_bcm: "Exact expected file count in bcm's chunk dirs. 0 disables bcm entirely."
+        n_expected_samples_uw: "Exact expected file count in uw's chunk dirs. 0 disables uw entirely."
+        n_expected_samples_controls_15x: "Minimum expected file count in the 15x-controls chunk dirs (more than expected only warns). 0 disables this source entirely."
+        n_expected_samples_controls_30x: "Minimum expected file count in the 30x-controls chunk dirs (more than expected only warns). 0 disables this source entirely."
         remote_outdir: "Without final slash. Receives `chunk_<i>.bcf` and `chunk_<i>.done`."
-        sample_ids_file: "Optional. Merge column order. If omitted, `sample_ids.txt` is read from `remote_indir` (produced by stage 1). The orchestrator passes stage 1's output directly to create a dependency and skip the extra download."
+        sample_ids_file: "Optional. Merge column order (the UNION of sample_ids across all enabled sources). If omitted, it is derived by unioning `sample_ids.txt` from every source with a nonzero n_expected_samples_<source> (each produced by stage 1). The orchestrator passes stage 1's union directly to create a dependency and skip the extra download."
         n_files_per_merge: "Batch size for level-1 of the hierarchical merge."
     }
 
@@ -52,7 +95,18 @@ workflow PAV_BcftoolsMerge_2_Merge {
     if (!defined(sample_ids_file)) {
         call GetSampleList {
             input:
-                remote_indir = remote_indir,
+                remote_indir_bi = remote_indir_bi,
+                remote_indir_ha = remote_indir_ha,
+                remote_indir_bcm = remote_indir_bcm,
+                remote_indir_uw = remote_indir_uw,
+                remote_indir_controls_15x = remote_indir_controls_15x,
+                remote_indir_controls_30x = remote_indir_controls_30x,
+                n_expected_samples_bi = n_expected_samples_bi,
+                n_expected_samples_ha = n_expected_samples_ha,
+                n_expected_samples_bcm = n_expected_samples_bcm,
+                n_expected_samples_uw = n_expected_samples_uw,
+                n_expected_samples_controls_15x = n_expected_samples_controls_15x,
+                n_expected_samples_controls_30x = n_expected_samples_controls_30x,
                 docker_image = docker_image
         }
     }
@@ -63,7 +117,19 @@ workflow PAV_BcftoolsMerge_2_Merge {
             input:
                 chunk_id = chunk_id,
                 sample_ids = sample_ids,
-                remote_indir = remote_indir,
+                remote_indir_bi = remote_indir_bi,
+                remote_indir_ha = remote_indir_ha,
+                remote_indir_bcm = remote_indir_bcm,
+                remote_indir_uw = remote_indir_uw,
+                remote_indir_controls_15x = remote_indir_controls_15x,
+                remote_indir_controls_30x = remote_indir_controls_30x,
+                bi_samples_to_prefer_over_ha = bi_samples_to_prefer_over_ha,
+                n_expected_samples_bi = n_expected_samples_bi,
+                n_expected_samples_ha = n_expected_samples_ha,
+                n_expected_samples_bcm = n_expected_samples_bcm,
+                n_expected_samples_uw = n_expected_samples_uw,
+                n_expected_samples_controls_15x = n_expected_samples_controls_15x,
+                n_expected_samples_controls_30x = n_expected_samples_controls_30x,
                 remote_outdir = remote_outdir,
                 n_files_per_merge = n_files_per_merge,
                 docker_image = docker_image,
@@ -74,20 +140,66 @@ workflow PAV_BcftoolsMerge_2_Merge {
     }
 
     output {
+        File merged_sample_ids_file = sample_ids
         Array[String] done = MergeChunk.done
     }
 }
 
 
+# Derives the canonical, deduplicated sample list by unioning `sample_ids.txt`
+# (written by stage 1) from every source with a nonzero expected count. Only
+# used when the caller doesn't already have this (e.g. from the orchestrator).
+#
 task GetSampleList {
     input {
-        String remote_indir
+        String remote_indir_bi
+        String remote_indir_ha
+        String remote_indir_bcm
+        String remote_indir_uw
+        String remote_indir_controls_15x
+        String remote_indir_controls_30x
+
+        Int n_expected_samples_bi
+        Int n_expected_samples_ha
+        Int n_expected_samples_bcm
+        Int n_expected_samples_uw
+        Int n_expected_samples_controls_15x
+        Int n_expected_samples_controls_30x
+
         String docker_image
     }
     command <<<
         set -euxo pipefail
-        gcloud storage cp ~{remote_indir}/sample_ids.txt ./sample_ids.txt
-        wc -l ./sample_ids.txt 1>&2
+        rm -f all_sample_ids.txt
+        touch all_sample_ids.txt
+
+        if [ ~{n_expected_samples_bi} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_bi}/sample_ids.txt bi_sample_ids.txt
+            cat bi_sample_ids.txt >> all_sample_ids.txt
+        fi
+        if [ ~{n_expected_samples_ha} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_ha}/sample_ids.txt ha_sample_ids.txt
+            cat ha_sample_ids.txt >> all_sample_ids.txt
+        fi
+        if [ ~{n_expected_samples_bcm} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_bcm}/sample_ids.txt bcm_sample_ids.txt
+            cat bcm_sample_ids.txt >> all_sample_ids.txt
+        fi
+        if [ ~{n_expected_samples_uw} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_uw}/sample_ids.txt uw_sample_ids.txt
+            cat uw_sample_ids.txt >> all_sample_ids.txt
+        fi
+        if [ ~{n_expected_samples_controls_15x} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_controls_15x}/sample_ids.txt controls_15x_sample_ids.txt
+            cat controls_15x_sample_ids.txt >> all_sample_ids.txt
+        fi
+        if [ ~{n_expected_samples_controls_30x} -gt 0 ]; then
+            gcloud storage cp ~{remote_indir_controls_30x}/sample_ids.txt controls_30x_sample_ids.txt
+            cat controls_30x_sample_ids.txt >> all_sample_ids.txt
+        fi
+
+        sort -u all_sample_ids.txt > sample_ids.txt
+        wc -l sample_ids.txt 1>&2
     >>>
     output {
         File sample_ids_file = "sample_ids.txt"
@@ -113,7 +225,23 @@ task MergeChunk {
     input {
         Int chunk_id
         File sample_ids
-        String remote_indir
+
+        String remote_indir_bi
+        String remote_indir_ha
+        String remote_indir_bcm
+        String remote_indir_uw
+        String remote_indir_controls_15x
+        String remote_indir_controls_30x
+
+        Array[String] bi_samples_to_prefer_over_ha
+
+        Int n_expected_samples_bi
+        Int n_expected_samples_ha
+        Int n_expected_samples_bcm
+        Int n_expected_samples_uw
+        Int n_expected_samples_controls_15x
+        Int n_expected_samples_controls_30x
+
         String remote_outdir
 
         Int n_files_per_merge
@@ -143,18 +271,83 @@ task MergeChunk {
             exit 0
         fi
 
-        # ------------------------- Localize chunk files -----------------------
         N_SAMPLES=$(cat ~{sample_ids} | wc -l)
 
+        # ------------------- List + validate every enabled source --------------
         date 1>&2
-        gcloud storage ls -l ~{remote_indir}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > remote_files.txt
-        N_FILES=$(wc -l < remote_files.txt)
-        N_FILES=$(( ${N_FILES} - 1 ))   # drop the trailing TOTAL line
-        if [ ${N_FILES} -ne ${N_SAMPLES} ]; then
-            echo "ERROR: chunk ~{chunk_id} has ${N_FILES} BCFs != ${N_SAMPLES} samples in sample_ids."
-            exit 1
+        rm -f all_remote_files.txt
+        touch all_remote_files.txt
+
+        if [ ~{n_expected_samples_bi} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_bi}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > bi_files.txt
+            N_FILES=$(wc -l < bi_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -ne ~{n_expected_samples_bi} ]; then
+                echo "ERROR: bi has ${N_FILES} files != ~{n_expected_samples_bi}"
+                exit 1
+            fi
+            head -n ${N_FILES} bi_files.txt >> all_remote_files.txt
         fi
-        head -n ${N_FILES} remote_files.txt > all_remote_files.txt
+
+        if [ ~{n_expected_samples_ha} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_ha}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > ha_files.txt
+            N_FILES=$(wc -l < ha_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -ne ~{n_expected_samples_ha} ]; then
+                echo "ERROR: ha has ${N_FILES} files != ~{n_expected_samples_ha}"
+                exit 1
+            fi
+            head -n ${N_FILES} ha_files.txt >> all_remote_files.txt
+        fi
+
+        if [ ~{n_expected_samples_bcm} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_bcm}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > bcm_files.txt
+            N_FILES=$(wc -l < bcm_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -ne ~{n_expected_samples_bcm} ]; then
+                echo "ERROR: bcm has ${N_FILES} files != ~{n_expected_samples_bcm}"
+                exit 1
+            fi
+            head -n ${N_FILES} bcm_files.txt >> all_remote_files.txt
+        fi
+
+        if [ ~{n_expected_samples_uw} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_uw}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > uw_files.txt
+            N_FILES=$(wc -l < uw_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -ne ~{n_expected_samples_uw} ]; then
+                echo "ERROR: uw has ${N_FILES} files != ~{n_expected_samples_uw}"
+                exit 1
+            fi
+            head -n ${N_FILES} uw_files.txt >> all_remote_files.txt
+        fi
+
+        if [ ~{n_expected_samples_controls_15x} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_controls_15x}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > control_15x_files.txt
+            N_FILES=$(wc -l < control_15x_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -lt ~{n_expected_samples_controls_15x} ]; then
+                echo "ERROR: controls_15x has ${N_FILES} files < ~{n_expected_samples_controls_15x}"
+                exit 1
+            elif [ ${N_FILES} -gt ~{n_expected_samples_controls_15x} ]; then
+                echo "WARNING: controls_15x has ${N_FILES} files > ~{n_expected_samples_controls_15x}"
+            fi
+            head -n ${N_FILES} control_15x_files.txt >> all_remote_files.txt
+        fi
+
+        if [ ~{n_expected_samples_controls_30x} -gt 0 ]; then
+            gcloud storage ls -l ~{remote_indir_controls_30x}/chunk_~{chunk_id}/'*.bcf' | tr -s ' ' | sed 's/^[ ]*//' > control_30x_files.txt
+            N_FILES=$(wc -l < control_30x_files.txt)
+            N_FILES=$(( ${N_FILES} - 1 ))
+            if [ ${N_FILES} -lt ~{n_expected_samples_controls_30x} ]; then
+                echo "ERROR: controls_30x has ${N_FILES} files < ~{n_expected_samples_controls_30x}"
+                exit 1
+            elif [ ${N_FILES} -gt ~{n_expected_samples_controls_30x} ]; then
+                echo "WARNING: controls_30x has ${N_FILES} files > ~{n_expected_samples_controls_30x}"
+            fi
+            head -n ${N_FILES} control_30x_files.txt >> all_remote_files.txt
+        fi
+        date 1>&2
 
         # Fail fast if the inputs won't fit on disk.
         AVAILABLE_GB=$(df -h | grep "cromwell_root" | tr -s ' ' | cut -d ' ' -f 4)
@@ -166,11 +359,51 @@ task MergeChunk {
             echo "ERROR: chunk ~{chunk_id} inputs + slack (${REMOTE_GB}GB) exceed available disk (${AVAILABLE_GB}GB). Increase merge_disk_size_gb or use a finer split CSV."
             exit 1
         fi
-        rm -f remote_files.txt
+        rm -f *_files.txt
 
+        # ------------------- Localize, resolving cross-source overlap ----------
+        # Sources are localized into the SAME flat ./input_files/ dir, keyed by
+        # `<sample_id>.bcf`. A later source silently overwrites an earlier
+        # source's file for any sample_id present in both. Default order below
+        # (bi, ha, uw, bcm, controls) means ha wins over bi, and uw/bcm/controls
+        # win over everything before them, on overlap. bi_samples_to_prefer_over_ha
+        # is the one explicit override: for exactly the listed sample_ids, bi's
+        # copy is re-localized after ha, flipping the winner back to bi. There is
+        # no equivalent override for uw/bcm/controls.
         date 1>&2
         mkdir ./input_files/
-        ${TIME_COMMAND} gcloud storage cp ~{remote_indir}/chunk_~{chunk_id}/'*' ./input_files/
+        if [ ~{n_expected_samples_bi} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_bi}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
+        if [ ~{n_expected_samples_ha} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_ha}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
+        if [ ~{n_expected_samples_bi} -gt 0 -a ~{n_expected_samples_ha} -gt 0 ]; then
+            echo ~{sep="," bi_samples_to_prefer_over_ha} | tr ',' '\n' > bi_samples_to_prefer_over_ha.txt
+            rm -f bi_override_files.txt
+            touch bi_override_files.txt
+            while read -u 5 SAMPLE_ID; do
+                [ -z "${SAMPLE_ID}" ] && continue
+                echo "~{remote_indir_bi}/chunk_~{chunk_id}/${SAMPLE_ID}.bcf" >> bi_override_files.txt
+                echo "~{remote_indir_bi}/chunk_~{chunk_id}/${SAMPLE_ID}.bcf.csi" >> bi_override_files.txt
+            done 5< bi_samples_to_prefer_over_ha.txt
+            if [ -s bi_override_files.txt ]; then
+                cat bi_override_files.txt | gcloud storage cp -I ./input_files/
+            fi
+            rm -f bi_samples_to_prefer_over_ha.txt bi_override_files.txt
+        fi
+        if [ ~{n_expected_samples_uw} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_uw}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
+        if [ ~{n_expected_samples_bcm} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_bcm}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
+        if [ ~{n_expected_samples_controls_15x} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_controls_15x}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
+        if [ ~{n_expected_samples_controls_30x} -gt 0 ]; then
+            ${TIME_COMMAND} gcloud storage cp ~{remote_indir_controls_30x}/chunk_~{chunk_id}/'*' ./input_files/
+        fi
         date 1>&2
         N_DOWNLOADED=$(ls ./input_files/*.bcf | wc -l)
         if [ ${N_DOWNLOADED} -ne ${N_SAMPLES} ]; then
