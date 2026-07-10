@@ -220,3 +220,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/PAV_BcftoolsMerge_Orchestrator.wdl
   testParameterFiles:
+- name: ReheaderVcfSamples
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/ReheaderVcfSamples.wdl
+  testParameterFiles:
