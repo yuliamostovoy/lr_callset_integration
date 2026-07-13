@@ -4,7 +4,7 @@ version 1.0
 # Computes `truvari collapse` chunks from all the `bcftools merge` chunks of a
 # chromosome.
 #
-workflow SV_Integration_Workpackage6 {
+workflow SV_Integration_Workpackage4 {
     input {
         String chromosome_id
         String bcftools_chunks

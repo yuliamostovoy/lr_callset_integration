@@ -3,7 +3,7 @@ version 1.0
 
 # Performs a bcftools merge of all the VCFs of a given chromosome chunk.
 #
-workflow SV_Integration_Workpackage5 {
+workflow SV_Integration_Workpackage3 {
     input {
         Int chunk_id
         File sample_ids

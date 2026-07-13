@@ -1,12 +1,12 @@
 version 1.0
 
 
-# Builds trio-specific candidate VCFs from the WP8 truvari-collapsed cohort
+# Builds trio-specific candidate VCFs from the WP6 truvari-collapsed cohort
 # VCF, re-genotypes each complete mother/father/proband trio with kanpig trio,
 # and splits selected sample outputs into chunks for downstream bcftools merge
-# by ID. This is intended as a test-mode sibling of Workpackage9_families.
+# by ID. This is intended as a test-mode sibling of Workpackage7_families.
 #
-workflow SV_Integration_Workpackage9_trios {
+workflow SV_Integration_Workpackage7_trios {
     input {
         File family_ids
         File ped
@@ -32,7 +32,7 @@ workflow SV_Integration_Workpackage9_trios {
         ped: "Standard 6-column PED: family_id, sample_id, paternal_id, maternal_id, sex, phenotype."
         sv_integration_sample_tsv: "Sample metadata TSV. First four columns are sample_id, sex, aligned_bai, aligned_bam."
         split_for_bcftools_merge_csv: "A partition that covers all chromosomes. Every line is a 0-based, half-open, consecutive chunk of a chromosome. Lines are assumed to be sorted."
-        remote_indir: "Without final slash. Contains WP8 genome-wide truvari_collapsed.bcf and truvari_collapsed.bcf.csi."
+        remote_indir: "Without final slash. Contains WP6 genome-wide truvari_collapsed.bcf and truvari_collapsed.bcf.csi."
         remote_outdir: "Without final slash. Output sample BCF chunks are written under chunk_N/sample.bcf. By default only probands are uploaded; set upload_parents=true to upload parents too."
         requester_pays_project: "Google Cloud project to bill for requester-pays BAM/BAI buckets. Leave blank for non-requester-pays buckets."
     }
@@ -270,7 +270,7 @@ task Impl {
         ~{docker_dir}/kanpig --version 1>&2
         cp ~{sv_integration_sample_tsv} sample_metadata.tsv
         
-        # Localizing the WP8 cohort VCF.
+        # Localizing the WP6 cohort VCF.
         ${TIME_COMMAND} gcloud storage cp ~{remote_indir}/truvari_collapsed.'bcf*' .
         mv truvari_collapsed.bcf cohort.bcf
         mv truvari_collapsed.bcf.csi cohort.bcf.csi

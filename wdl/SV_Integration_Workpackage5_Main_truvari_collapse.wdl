@@ -4,7 +4,7 @@ version 1.0
 # Runs `truvari collapse` on a small chunk of a bcftools merged cohort VCF.
 # Default truvari parameters are optimal for 10k samples.
 #
-workflow SV_Integration_Workpackage7 {
+workflow SV_Integration_Workpackage5 {
     input {
         String remote_indir
         String chromosome_id

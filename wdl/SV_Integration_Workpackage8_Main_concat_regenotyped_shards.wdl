@@ -4,7 +4,7 @@ version 1.0
 # Combines the bcftools merge chunks of a re-genotyped chromosome, in the given
 # order.
 #
-workflow SV_Integration_Workpackage11 {
+workflow SV_Integration_Workpackage8 {
     input {
         String chunk_ids
         

@@ -16,7 +16,7 @@ Run these workflows in order:
 5. `SV_Integration_Workpackage5_Main_truvari_collapse.wdl`
 6. `SV_Integration_Workpackage6_Main_concat_shards.wdl`
 7. `SV_Integration_Workpackage7_Main_joint_genotype_families.wdl`
-8. `SV_Integration_Workpackage11.wdl`
+8. `SV_Integration_Workpackage8_Main_concat_regenotyped_shards.wdl`
 
 What they do:
 
@@ -38,12 +38,12 @@ What they do:
   the genome-wide `truvari_collapsed.bcf` consumed by the family regenotyping
   workflow.
 - `SV_Integration_Workpackage7_Main_joint_genotype_families.wdl`: builds family-specific candidate
-  VCFs from the WP8 collapsed cohort VCF, keeps sites present in at least one
+  VCFs from the WP6 collapsed cohort VCF, keeps sites present in at least one
   family member, regenotypes each family member with Kanpig, and scatters each
   sample's regenotyped calls into merge chunks. This is the production rare
   disease path and replaces the older personalized VCF workflow.
-- `SV_Integration_Workpackage11.wdl`: concatenates regenotyped merge chunks into
-  final merged regenotyped BCFs.
+- `SV_Integration_Workpackage8_Main_concat_regenotyped_shards.wdl`: concatenates regenotyped merge
+  chunks into final merged regenotyped BCFs.
 
 Optional/test variant:
 
@@ -51,6 +51,12 @@ Optional/test variant:
   from complete mother/father/proband trios and runs `kanpig trio`. By default
   it uploads proband chunks only, with optional parent upload. This is a
   test-mode sibling of the family workflow, not the default production path.
+- `SV_Integration_Workpackage7_Main_joint_genotype_families_cutefc.wdl`: a
+  drop-in sibling of the family workflow that regenotypes with cuteFC
+  (force-calling) instead of Kanpig. Intended for testing regenotyping of large
+  (multi-kb++) events that Kanpig cannot handle. cuteFC does not use a ploidy
+  BED, so sex-aware genotyping on the sex chromosomes is not applied. Outputs
+  plug into the same downstream steps.
 
 ## BND Scoring Branch
 

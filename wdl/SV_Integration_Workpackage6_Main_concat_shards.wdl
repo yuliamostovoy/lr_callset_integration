@@ -6,7 +6,7 @@ version 1.0
 # duplicated IDs may arise naturally from the previous steps of the pipeline),
 # and an INFO field that counts the number of samples it was discovered in.
 #
-workflow SV_Integration_Workpackage8 {
+workflow SV_Integration_Workpackage6 {
     input {
         Array[String] chromosomes = ["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"]
         String remote_indir

@@ -5,7 +5,7 @@ version 1.0
 # variants, and then splits it into ~100 pieces, in order to run bcftools merge
 # over all samples on parallel chunks.
 #
-workflow SV_Integration_Workpackage3 {
+workflow SV_Integration_Workpackage2 {
     input {
         File sv_integration_chunk_tsv
         File split_for_bcftools_merge_csv
