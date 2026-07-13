@@ -165,6 +165,11 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_Workpackage7_Main_joint_genotype_families.wdl
   testParameterFiles:
+- name: SV_Integration_Workpackage7_Main_joint_genotype_families_cutefc
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_Workpackage7_Main_joint_genotype_families_cutefc.wdl
+  testParameterFiles:
 - name: SV_Integration_Workpackage7_trios
   subclass: wdl
   publish: True
