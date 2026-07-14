@@ -158,8 +158,14 @@ END
         
         # Trivial "hierarchical" bcftools merge with just two steps.
         # Step 1: merging a few samples at a time over the whole genome.
+        # Reheader each per-sample BCF to its sample_ids name before merging so
+        # the cohort uses the same sample names as the main branch (WP3).
         rm -f list.txt
         while read -u 3 SAMPLE_ID; do
+            echo ${SAMPLE_ID} > ${SAMPLE_ID}.sample_name.txt
+            ${TIME_COMMAND} bcftools reheader --samples ${SAMPLE_ID}.sample_name.txt --output ./input_files/${SAMPLE_ID}_~{suffix}.reheader.bcf ./input_files/${SAMPLE_ID}_~{suffix}.bcf
+            mv ./input_files/${SAMPLE_ID}_~{suffix}.reheader.bcf ./input_files/${SAMPLE_ID}_~{suffix}.bcf
+            ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ./input_files/${SAMPLE_ID}_~{suffix}.bcf
             echo ./input_files/${SAMPLE_ID}_~{suffix}.bcf >> list.txt
         done 3< ~{sample_ids}
         split -l ~{n_files_per_merge} -d -a 4 list.txt list_
