@@ -74,8 +74,10 @@ task Impl {
         Int ram_size_gb = 16
         Int disk_size_gb = 100
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"
@@ -220,17 +222,28 @@ task Impl {
         
         
         # ---------------------------- Main program ----------------------------
-        
-        LocalizeChunkFiles
-        MergeChunkFiles
-        gcloud storage mv ~{chunk_id}_merged.bcf ~{remote_outdir}/chunk_~{chunk_id}.bcf
-        gcloud storage mv ~{chunk_id}_merged.bcf.csi ~{remote_outdir}/chunk_~{chunk_id}.bcf.csi
-        if [ ~{merge_mode} -eq 2 ]; then
-            gcloud storage mv ~{chunk_id}_n_alt.csv ~{remote_outdir}/
+
+        # Idempotency: skip if this chunk's merged output already exists, so a
+        # resubmission only reruns chunks that failed.
+        TEST=$( gcloud storage ls ~{remote_outdir}/chunk_~{chunk_id}.bcf || echo "0" )
+        if [ ${TEST} != "0" ]; then
+            echo "Chunk ~{chunk_id} already merged; skipping." 1>&2
+        else
+            LocalizeChunkFiles
+            MergeChunkFiles
+            gcloud storage mv ~{chunk_id}_merged.bcf ~{remote_outdir}/chunk_~{chunk_id}.bcf
+            gcloud storage mv ~{chunk_id}_merged.bcf.csi ~{remote_outdir}/chunk_~{chunk_id}.bcf.csi
+            if [ ~{merge_mode} -eq 2 ]; then
+                gcloud storage mv ~{chunk_id}_n_alt.csv ~{remote_outdir}/
+            fi
         fi
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "chunk_~{chunk_id}" > merge.signal
     >>>
-    
+
     output {
+        String done = read_string("merge.signal")
     }
     runtime {
         docker: docker_image

@@ -58,14 +58,16 @@ task SingleChromosome {
         String chromosome
         String remote_indir
         String remote_outdir
-        
+
         String docker_image
         Int n_cpu = 1
         Int ram_size_gb = 2
         Int disk_size_gb = 10
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"
@@ -115,10 +117,21 @@ task SingleChromosome {
             # upstream, so we have to recompute this number.
             CHR=~{chromosome}
             CHR=${CHR#chr}
-            ${TIME_COMMAND} bcftools query --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%COUNT(GT="alt")\n' in.bcf | awk -v id=${CHR} 'BEGIN { FS="\t"; OFS="\t"; i=0; } { $3=sprintf("%s_%d",id,i++); print $0 }' | bgzip -c > annotations.tsv.gz
-            tabix -@ ${N_THREADS} -s1 -b2 -e2 annotations.tsv.gz
-            echo '##INFO=<ID=N_DISCOVERY_SAMPLES,Number=1,Type=Integer,Description="Number of samples where the record was discovered">' > header.txt
-            ${TIME_COMMAND} bcftools annotate --header-lines header.txt --annotations annotations.tsv.gz --columns CHROM,POS,ID,REF,ALT,N_DISCOVERY_SAMPLES --output-type b in.bcf --output out.bcf
+            # Enforcing a distinct ID in every record, and annotating every record
+            # with the number of samples it occurs in. Note that the latter is not
+            # equal to the QUAL field in input to truvari collapse upstream, so we
+            # have to recompute this number.
+            #
+            # Both operations are keyed on record ORDER, not on CHROM/POS/REF/ALT.
+            # A position-based `bcftools annotate` matches on CHROM,POS,REF,ALT and
+            # cannot distinguish same-position symbolic records (identical
+            # CHROM/POS/REF/ALT but different END/SVLEN); it would assign such
+            # records the same ID and copy the same N_DISCOVERY_SAMPLES to all of
+            # them. Matching on ID (`-c ~ID`) is not usable either (unimplemented
+            # in bcftools). `bcftools query` and `bcftools view` both emit records
+            # in file order, so counts.txt aligns 1:1 with the streamed records.
+            ${TIME_COMMAND} bcftools query --format '%COUNT(GT="alt")\n' in.bcf > counts.txt
+            ${TIME_COMMAND} bcftools view in.bcf | awk -v id=${CHR} 'BEGIN { FS="\t"; OFS="\t"; i=0; j=0; while ((getline c < "counts.txt") > 0) { cnt[j++]=c; } } /^#CHROM/ { print "##INFO=<ID=N_DISCOVERY_SAMPLES,Number=1,Type=Integer,Description=\"Number of samples where the record was discovered\">"; print $0; next } /^#/ { print $0; next } { $3=sprintf("%s_%d",id,i); if ($8==".") { $8="N_DISCOVERY_SAMPLES=" cnt[i] } else { $8=$8 ";N_DISCOVERY_SAMPLES=" cnt[i] } i++; print $0 }' | bcftools view --output-type b --output out.bcf
             df -h 1>&2
             rm -f in.bcf* ; mv out.bcf in.bcf ; bcftools index --threads ${N_THREADS} -f in.bcf
             gcloud storage cp in.bcf ~{remote_outdir}/~{chromosome}/truvari_collapsed.bcf

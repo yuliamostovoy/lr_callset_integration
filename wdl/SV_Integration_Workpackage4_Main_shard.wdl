@@ -84,14 +84,16 @@ task Impl {
         String remote_indir
         String remote_outdir
         Int consistency_checks = 1
-        
+
         String docker_image
         Int n_cpu = 8
         Int ram_size_gb = 12
         Int disk_size_gb = 50
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"
@@ -173,8 +175,12 @@ END
         cat file_list.txt | gcloud storage cp -I ~{remote_outdir}/~{chromosome_id}/
         gcloud storage cp regions.txt ~{remote_outdir}/~{chromosome_id}/
     >>>
-    
+
     output {
+        # regions.txt (col 1 = region, col 2 = chunk id) is delocalized so an
+        # orchestrator can derive the truvari-collapse chunk-id lists in-graph,
+        # replacing make_workpackage7_chunk_id_files.sh.
+        File regions_txt = "regions.txt"
     }
     runtime {
         docker: docker_image

@@ -196,9 +196,13 @@ task Impl {
             rm -rf chunk_${CHUNK_ID}*
             ls -laht 1>&2
         done 3< ~{chunks_ids}
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp5.signal
     >>>
-    
+
     output {
+        String done = read_string("wp5.signal")
     }
     runtime {
         docker: docker_image

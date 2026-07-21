@@ -66,14 +66,16 @@ task Impl {
         
         String remote_indir
         String remote_outdir
-        
+
         String docker_image
         Int n_cpu = 4
         Int ram_size_gb = 8
         Int disk_size_gb = 50
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"
@@ -142,8 +144,12 @@ END
         # Uploading
         ${TIME_COMMAND} gcloud storage mv 'chunk_*.bcf*' ~{remote_outdir}/~{chromosome_id}/
     >>>
-    
+
     output {
+        # col 1 = region, col 2 = chunk id. Delocalized so an orchestrator can
+        # derive the truvari-collapse chunk-id lists in-graph (this task does not
+        # upload regions.txt to GCS).
+        File regions_txt = "regions.txt"
     }
     runtime {
         docker: docker_image

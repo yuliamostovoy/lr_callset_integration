@@ -49,8 +49,10 @@ task Impl {
         Int ram_size_gb = 4
         Int disk_size_gb = 50
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"

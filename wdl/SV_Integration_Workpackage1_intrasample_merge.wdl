@@ -165,10 +165,38 @@ task Impl {
         if [ -n "~{requester_pays_project}" ]; then
             GCLOUD_STORAGE_BILLING_FLAGS="--billing-project=~{requester_pays_project}"
         fi
-        
-        
-        
-        
+
+
+        # ---------------------------------------------------------------------
+        # Applies `bcftools annotate`, transferring tags matched on the record ID.
+        # `~ID` only takes effect when REF,ALT are ALSO present in the annotation
+        # file and in --columns; otherwise bcftools silently falls back to
+        # CHROM,POS-only matching and mis-assigns tags across records that share
+        # a start coordinate. This wrapper injects REF,ALT (columns 4,5, looked
+        # up by the unique record ID) into the pre-built annotation TSV and
+        # splices REF,ALT into the column list, so the ~ID match engages.
+        #
+        # @param 1 bgzip'd annotation TSV: CHROM POS ID <tags...> (position-sorted).
+        # @param 2 header-lines file.  @param 3 --columns string containing ",~ID,".
+        # @param 4 input VCF (must have UNIQUE ids).  @param 5 output.
+        # @param 6 --output-type value (v/z/b).
+        #
+        function AnnotateById() {
+            local TSV=$1
+            local HDR=$2
+            local COLS=$3
+            local IN=$4
+            local OUT=$5
+            local OFMT=$6
+
+            bcftools query --format '%ID\t%REF\t%ALT\n' ${IN} | sort -t $'\t' -k1,1 > refalt_by_id.tsv
+            bgzip -dc ${TSV} | awk 'BEGIN { FS="\t"; OFS="\t"; } NR==FNR { ra[$1]=$2 FS $3; next } { line=$1 FS $2 FS $3 FS ra[$3]; for (k=4; k<=NF; k++) line=line FS $k; print line }' refalt_by_id.tsv - | bgzip > refalt.${TSV}
+            tabix -@ ${N_THREADS} -f -s1 -b2 -e2 refalt.${TSV}
+            bcftools annotate --threads ${N_THREADS} --annotations refalt.${TSV} --header-lines ${HDR} --columns "${COLS/,~ID,/,~ID,REF,ALT,}" --output-type ${OFMT} ${IN} --output ${OUT}
+            rm -f refalt_by_id.tsv refalt.${TSV} refalt.${TSV}.tbi
+        }
+
+
         # ----------------------- Steps of the pipeline ------------------------
         
         # Remark: localizing the BAM could be avoided by running kanpig on the
@@ -650,7 +678,7 @@ task Impl {
             echo '##INFO=<ID=SUPP_PBSV,Number=1,Type=Integer,Description="Supported by pbsv">' >> ${SAMPLE_ID}_header.txt
             # Remark: the order of the callers is now the reverse of the one in
             # which they were bcftools-merged.
-            ${TIME_COMMAND} bcftools annotate --annotations ${SAMPLE_ID}_annotations.tsv.gz --header-lines ${SAMPLE_ID}_header.txt --columns CHROM,POS,~ID,INFO/SUPP_SNIFFLES,INFO/SUPP_PBSV,INFO/SUPP_PAV --output-type ${OUTPUT_FORMAT} ${INPUT_VCF_GZ} --output ${OUTPUT_VCF_GZ}
+            ${TIME_COMMAND} AnnotateById ${SAMPLE_ID}_annotations.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,INFO/SUPP_SNIFFLES,INFO/SUPP_PBSV,INFO/SUPP_PAV" ${INPUT_VCF_GZ} ${OUTPUT_VCF_GZ} ${OUTPUT_FORMAT}
             if [ ${OUTPUT_FORMAT} = z ]; then
                 bcftools index --threads ${N_THREADS} -f -t ${OUTPUT_VCF_GZ}
             elif [ ${OUTPUT_FORMAT} = b ]; then
@@ -770,7 +798,7 @@ task Impl {
                 printf("%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",$1,$2,$3,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,$10,$11,$12); \
             }' | bgzip -c > ${SAMPLE_ID}_format.tsv.gz
             tabix -@ ${N_THREADS} -s1 -b2 -e2 ${SAMPLE_ID}_format.tsv.gz
-            ${TIME_COMMAND} bcftools annotate --threads ${N_THREADS} --annotations ${SAMPLE_ID}_format.tsv.gz --header-lines ${SAMPLE_ID}_header.txt --columns CHROM,POS,~ID,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,SUPP_PBSV,SUPP_SNIFFLES,SUPP_PAV --output-type z ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_out.vcf.gz
+            ${TIME_COMMAND} AnnotateById ${SAMPLE_ID}_format.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,SUPP_PBSV,SUPP_SNIFFLES,SUPP_PAV" ${INPUT_VCF_GZ} ${SAMPLE_ID}_out.vcf.gz z
             mv ${SAMPLE_ID}_out.vcf.gz ${SAMPLE_ID}_in.vcf.gz; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_in.vcf.gz
             (bcftools view --no-header ${SAMPLE_ID}_in.vcf.gz | head -n 1 || echo "0") 1>&2
             
@@ -893,9 +921,14 @@ END
             DelocalizeSample ${SAMPLE_ID}
             ls -laht
         done 3< chunk.csv
+
+        # Batch-completion signal, consumed by orchestrator workflows to order
+        # a downstream step after this one. Ignored by standalone runs.
+        echo "done" > wp1.signal
     >>>
-    
+
     output {
+        String done = read_string("wp1.signal")
     }
     runtime {
         docker: docker_image

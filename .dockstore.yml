@@ -230,3 +230,23 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/ReheaderVcfSamples.wdl
   testParameterFiles:
+- name: SV_Integration_WorkflowA_Intrasample_Scoring
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowA_Intrasample_Scoring.wdl
+  testParameterFiles:
+- name: SV_Integration_WorkflowB_Merge_Collapse
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowB_Merge_Collapse.wdl
+  testParameterFiles:
+- name: SV_Integration_WorkflowC_Regenotype
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowC_Regenotype.wdl
+  testParameterFiles:
+- name: SV_Integration_WorkflowD_Ultralong_Bnd
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowD_Ultralong_Bnd.wdl
+  testParameterFiles:

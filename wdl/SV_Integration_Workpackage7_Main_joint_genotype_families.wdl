@@ -311,9 +311,13 @@ EOF_FAMILY_IDS
             gcloud storage cp ${FAMILY_ID}_family.csv ~{remote_outdir}/
             rm -f ${FAMILY_ID}.samples.txt ${FAMILY_ID}_present.vcf.gz* ${FAMILY_ID}_family.csv
         done 3< family_ids.txt
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp7.signal
     >>>
-    
+
     output {
+        String done = read_string("wp7.signal")
     }
     runtime {
         docker: docker_image

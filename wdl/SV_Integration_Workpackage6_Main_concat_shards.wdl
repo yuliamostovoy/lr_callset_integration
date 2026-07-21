@@ -58,14 +58,16 @@ task SingleChromosome {
         String chromosome
         String remote_indir
         String remote_outdir
-        
+
         String docker_image
         Int n_cpu = 4
         Int ram_size_gb = 4
         Int disk_size_gb = 200
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"

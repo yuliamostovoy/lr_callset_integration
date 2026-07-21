@@ -204,9 +204,13 @@ END
         date 1>&2
         cat files_list.txt | gcloud storage mv -I ~{remote_outdir}/
         date 1>&2
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp12.signal
     >>>
-    
+
     output {
+        String done = read_string("wp12.signal")
     }
     runtime {
         docker: docker_image

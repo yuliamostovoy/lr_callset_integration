@@ -77,14 +77,16 @@ task Impl {
         File training_python_script
         File scoring_python_script
         File hyperparameters_json
-        
+
         String docker_image
         Int n_cpu = 2
         Int ram_size_gb = 3
         Int disk_size_gb = 20
         Int preemptible_number = 4
+        String upstream_signal = ""
     }
     parameter_meta {
+        upstream_signal: "Ordering-only handshake for orchestrator workflows: set to the `done` output of the upstream per-sample step so this task starts only after it. Ignored by standalone runs."
     }
     
     String docker_dir = "/root"
@@ -171,9 +173,14 @@ task Impl {
             echo '##FORMAT=<ID=SUPP_PAV,Number=1,Type=Integer,Description="Supported by pav">' >> ${SAMPLE_ID}_header.txt
             echo '##FORMAT=<ID=SCORE,Number=1,Type=Float,Description="Score according to the XGBoost model">' >> ${SAMPLE_ID}_header.txt
             echo '##FORMAT=<ID=CALIBRATION_SENSITIVITY,Number=1,Type=Float,Description="Calibration sensitivity according to the model applied by ScoreVariantAnnotations">' >> ${SAMPLE_ID}_header.txt
-            bcftools query --format '%CHROM\t%POS\t%ID\t%SUPP_PBSV\t%SUPP_SNIFFLES\t%SUPP_PAV\t%SCORE\t%CALIBRATION_SENSITIVITY\n' ${INPUT_VCF_GZ} | bgzip -c > ${SAMPLE_ID}_format.tsv.gz
+            # REF,ALT are emitted (cols 4,5) and added to --columns so the `~ID`
+            # match actually engages. Without REF,ALT present bcftools ignores
+            # `~ID` and matches on CHROM,POS only, mis-assigning FORMAT values
+            # across records sharing a start coordinate. IDs are distinct (see
+            # @param note above).
+            bcftools query --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%SUPP_PBSV\t%SUPP_SNIFFLES\t%SUPP_PAV\t%SCORE\t%CALIBRATION_SENSITIVITY\n' ${INPUT_VCF_GZ} | bgzip -c > ${SAMPLE_ID}_format.tsv.gz
             tabix -f -s1 -b2 -e2 ${SAMPLE_ID}_format.tsv.gz
-            bcftools annotate --threads ${N_THREADS} --header-lines ${SAMPLE_ID}_header.txt --annotations ${SAMPLE_ID}_format.tsv.gz --columns CHROM,POS,~ID,FORMAT/SUPP_PBSV,FORMAT/SUPP_SNIFFLES,FORMAT/SUPP_PAV,FORMAT/SCORE,FORMAT/CALIBRATION_SENSITIVITY --output-type b ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_scored.bcf
+            bcftools annotate --threads ${N_THREADS} --header-lines ${SAMPLE_ID}_header.txt --annotations ${SAMPLE_ID}_format.tsv.gz --columns CHROM,POS,~ID,REF,ALT,FORMAT/SUPP_PBSV,FORMAT/SUPP_SNIFFLES,FORMAT/SUPP_PAV,FORMAT/SCORE,FORMAT/CALIBRATION_SENSITIVITY --output-type b ${INPUT_VCF_GZ} --output ${SAMPLE_ID}_scored.bcf
             bcftools index --threads ${N_THREADS} ${SAMPLE_ID}_scored.bcf
             (bcftools view --no-header ${SAMPLE_ID}_scored.bcf | head -n 1 || echo "0") 1>&2
             
@@ -250,9 +257,13 @@ task Impl {
             DelocalizeSample ${SAMPLE_ID}
             ls -laht
         done 3< chunk.csv
+
+        # Batch-completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp2.signal
     >>>
-    
+
     output {
+        String done = read_string("wp2.signal")
     }
     runtime {
         docker: docker_image

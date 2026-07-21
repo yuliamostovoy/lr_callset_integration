@@ -183,9 +183,13 @@ task Impl {
                 
             # Dropping the IDs written by truvari collapse, since they can be
             # very long on a large cohort and needlessly inflate output size.
-            ${TIME_COMMAND} bcftools query --format '%CHROM\t%POS\t%ID\t%REF\t%ALT\t\n' chunk_${CHUNK_ID}_in.bcf | awk -v id=${CHUNK_ID} 'BEGIN { FS="\t"; OFS="\t"; i=0; } { $3=sprintf("%s_%d",id,i++); print $0 }' | bgzip -c > annotations.tsv.gz
-            tabix -@ ${N_THREADS} -s1 -b2 -e2 annotations.tsv.gz
-            ${TIME_COMMAND} bcftools annotate --annotations annotations.tsv.gz --columns CHROM,POS,ID,REF,ALT --output-type b chunk_${CHUNK_ID}_in.bcf --output chunk_${CHUNK_ID}_out.bcf
+            # IDs are reassigned by record order (chunk id, running index) via a
+            # streaming rewrite of the ID column. This is done in a single pass
+            # instead of a position-based `bcftools annotate`, because the latter
+            # matches records on CHROM,POS,REF,ALT and therefore cannot tell apart
+            # same-position symbolic records (identical CHROM/POS/REF/ALT but
+            # different END/SVLEN), assigning them the same ID.
+            ${TIME_COMMAND} bcftools view chunk_${CHUNK_ID}_in.bcf | awk -v id=${CHUNK_ID} 'BEGIN { FS="\t"; OFS="\t"; i=0; } /^#/ { print; next } { $3=sprintf("%s_%d",id,i++); print $0 }' | bcftools view --output-type b --output chunk_${CHUNK_ID}_out.bcf
             rm -f chunk_${CHUNK_ID}_in.bcf ; mv chunk_${CHUNK_ID}_out.bcf chunk_${CHUNK_ID}_in.bcf ; bcftools index --threads ${N_THREADS} -f chunk_${CHUNK_ID}_in.bcf
                 
             mv chunk_${CHUNK_ID}_in.bcf chunk_${CHUNK_ID}_truvari.bcf
@@ -228,9 +232,13 @@ task Impl {
             rm -rf chunk_${CHUNK_ID}*
             ls -laht 1>&2
         done 3< ~{chunks_ids}
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp14.signal
     >>>
-    
+
     output {
+        String done = read_string("wp14.signal")
     }
     runtime {
         docker: docker_image
