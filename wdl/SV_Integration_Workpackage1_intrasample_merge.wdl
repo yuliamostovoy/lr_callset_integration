@@ -683,7 +683,7 @@ task Impl {
             echo '##INFO=<ID=SUPP_PBSV,Number=1,Type=Integer,Description="Supported by pbsv">' >> ${SAMPLE_ID}_header.txt
             # Remark: the order of the callers is now the reverse of the one in
             # which they were bcftools-merged.
-            ${TIME_COMMAND} AnnotateById ${SAMPLE_ID}_annotations.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,INFO/SUPP_SNIFFLES,INFO/SUPP_PBSV,INFO/SUPP_PAV" ${INPUT_VCF_GZ} ${OUTPUT_VCF_GZ} ${OUTPUT_FORMAT}
+            AnnotateById ${SAMPLE_ID}_annotations.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,INFO/SUPP_SNIFFLES,INFO/SUPP_PBSV,INFO/SUPP_PAV" ${INPUT_VCF_GZ} ${OUTPUT_VCF_GZ} ${OUTPUT_FORMAT}
             if [ ${OUTPUT_FORMAT} = z ]; then
                 bcftools index --threads ${N_THREADS} -f -t ${OUTPUT_VCF_GZ}
             elif [ ${OUTPUT_FORMAT} = b ]; then
@@ -803,7 +803,7 @@ task Impl {
                 printf("%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",$1,$2,$3,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,$10,$11,$12); \
             }' | bgzip -c > ${SAMPLE_ID}_format.tsv.gz
             tabix -@ ${N_THREADS} -s1 -b2 -e2 ${SAMPLE_ID}_format.tsv.gz
-            ${TIME_COMMAND} AnnotateById ${SAMPLE_ID}_format.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,SUPP_PBSV,SUPP_SNIFFLES,SUPP_PAV" ${INPUT_VCF_GZ} ${SAMPLE_ID}_out.vcf.gz z
+            AnnotateById ${SAMPLE_ID}_format.tsv.gz ${SAMPLE_ID}_header.txt "CHROM,POS,~ID,KS_1,KS_2,SQ,GQ,DP,AD_NON_ALT,AD_ALL,GT_COUNT,SUPP_PBSV,SUPP_SNIFFLES,SUPP_PAV" ${INPUT_VCF_GZ} ${SAMPLE_ID}_out.vcf.gz z
             mv ${SAMPLE_ID}_out.vcf.gz ${SAMPLE_ID}_in.vcf.gz; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_in.vcf.gz
             (bcftools view --no-header ${SAMPLE_ID}_in.vcf.gz | head -n 1 || echo "0") 1>&2
             
