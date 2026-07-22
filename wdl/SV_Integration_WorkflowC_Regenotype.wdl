@@ -51,13 +51,15 @@ workflow SV_Integration_WorkflowC_Regenotype {
         aligned_bais: "e.g. `this.samples.aligned_bai` (gs:// URI)."
         aligned_bams: "e.g. `this.samples.aligned_bam` (gs:// URI)."
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file the rest of the pipeline used."
-        wp6_remote_indir: "Without final slash. Workflow B's /06_concat dir holding the genome-wide truvari_collapsed.bcf(.csi)."
-        remote_outdir: "Without final slash. Outputs go to /07_regenotype (per-sample chunks), /07b_merge (per-chunk merged), /08_concat (final merged.bcf) under here."
+        wp6_remote_indir: "Workflow B's /06_concat dir holding the genome-wide truvari_collapsed.bcf(.csi)."
+        remote_outdir: "Outputs go to /07_regenotype (per-sample chunks), /07b_merge (per-chunk merged), /08_concat (final merged.bcf) under here."
     }
 
-    String regeno_dir = remote_outdir + "/07_regenotype"
-    String merge_dir = remote_outdir + "/07b_merge"
-    String concat_dir = remote_outdir + "/08_concat"
+    String wp6_indir = sub(wp6_remote_indir, "/+$", "")
+    String outdir = sub(remote_outdir, "/+$", "")
+    String regeno_dir = outdir + "/07_regenotype"
+    String merge_dir = outdir + "/07b_merge"
+    String concat_dir = outdir + "/08_concat"
 
     Int n_chunks = length(read_lines(split_for_bcftools_merge_csv))
 
@@ -78,7 +80,7 @@ workflow SV_Integration_WorkflowC_Regenotype {
             aligned_bais = aligned_bais,
             aligned_bams = aligned_bams,
             split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
-            remote_indir = wp6_remote_indir,
+            remote_indir = wp6_indir,
             remote_outdir = regeno_dir,
             requester_pays_project = requester_pays_project,
             reference_fa = reference_fa,

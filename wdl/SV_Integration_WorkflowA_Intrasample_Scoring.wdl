@@ -42,7 +42,7 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
         String region = "all"
         String requester_pays_project = ""
         Int min_sv_length = 20
-        Int max_sv_length = 10000
+        Int max_sv_length = 2000
         String kanpig_params_singlesample = "--neighdist 1000 --gpenalty 0.02 --hapsim 0.9999 --sizesim 0.90 --seqsim 0.85 --maxpaths 10000"
         Int ultralong_collapse_mode = 0
         File training_resource_vcf_gz
@@ -80,13 +80,14 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
         pav_vcfs: "e.g. `this.03_pav_vcf`. Required only when has_pav=true."
         has_pav: "true: 11-column manifest incl. PAV. false: 8-column manifest (pbsv+sniffles only)."
         batch_size: "Number of samples processed sequentially per VM."
-        remote_outdir: "Without final slash. WP1 per-sample outputs go to /01_intrasample (consumed by Workflow D); WP2 scored chunks + <sample>.done go to /02_scoring (consumed by Workflow B)."
+        remote_outdir: "WP1 per-sample outputs go to /01_intrasample (consumed by Workflow D); WP2 scored chunks + <sample>.done go to /02_scoring (consumed by Workflow B)."
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file the merge/collapse stages use."
         training_resource_bed: "Shared by WP1 and WP2."
     }
 
-    String intrasample_dir = remote_outdir + "/01_intrasample"
-    String scoring_dir = remote_outdir + "/02_scoring"
+    String outdir = sub(remote_outdir, "/+$", "")
+    String intrasample_dir = outdir + "/01_intrasample"
+    String scoring_dir = outdir + "/02_scoring"
 
     call MakeManifests {
         input:

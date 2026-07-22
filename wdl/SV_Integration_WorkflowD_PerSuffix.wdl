@@ -38,8 +38,8 @@ workflow SV_Integration_WorkflowD_PerSuffix {
     }
     parameter_meta {
         suffix: "'ultralong' or 'bnd'."
-        remote_indir: "Without final slash. Workflow A intra-sample output dir holding <sample>_<suffix>.bcf per sample."
-        remote_outdir_suffix: "Without final slash. Stage outputs go to /12_merge, /13_shard, /14_collapse, /15_concat under here; the genome-wide callset is /15_concat/truvari_collapsed.bcf."
+        remote_indir: "Workflow A intra-sample output dir holding <sample>_<suffix>.bcf per sample."
+        remote_outdir_suffix: "Stage outputs go to /12_merge, /13_shard, /14_collapse, /15_concat under here; the genome-wide callset is /15_concat/truvari_collapsed.bcf."
         n_expected_samples: "OPTIONAL. Auto-derived from the remote_indir listing when omitted."
     }
 

@@ -40,19 +40,22 @@ workflow SV_Integration_WorkflowD_Ultralong_Bnd {
     }
     parameter_meta {
         suffixes: "Which per-sample call classes to integrate. Default: both ultralong and bnd."
-        remote_indir: "Without final slash. Workflow A intra-sample output dir holding <sample>_ultralong.bcf and <sample>_bnd.bcf per sample."
-        remote_outdir: "Without final slash. Per suffix, stage outputs go to /<suffix>/{12_merge,13_shard,14_collapse,15_concat}; the genome-wide callset is /<suffix>/15_concat/truvari_collapsed.bcf."
+        remote_indir: "Workflow A intra-sample output dir holding <sample>_ultralong.bcf and <sample>_bnd.bcf per sample."
+        remote_outdir: "Per suffix, stage outputs go to /<suffix>/{12_merge,13_shard,14_collapse,15_concat}; the genome-wide callset is /<suffix>/15_concat/truvari_collapsed.bcf."
         chromosomes: "Comma-separated (WP12 signature)."
         chromosomes_array: "Same chromosomes as an array (WP15 signature)."
         n_expected_samples: "OPTIONAL. Auto-derived per suffix when omitted."
     }
 
+    String indir = sub(remote_indir, "/+$", "")
+    String outdir = sub(remote_outdir, "/+$", "")
+
     scatter (suffix in suffixes) {
         call perSuffix.SV_Integration_WorkflowD_PerSuffix as PerSuffix {
             input:
                 suffix = suffix,
-                remote_indir = remote_indir,
-                remote_outdir_suffix = remote_outdir + "/" + suffix,
+                remote_indir = indir,
+                remote_outdir_suffix = outdir + "/" + suffix,
                 chromosomes = chromosomes,
                 chromosomes_array = chromosomes_array,
                 n_expected_samples = n_expected_samples,

@@ -41,17 +41,19 @@ workflow SV_Integration_WorkflowB_Merge_Collapse {
     }
     parameter_meta {
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file Workflow A used."
-        remote_indir: "Without final slash. Workflow A's scoring output dir (chunk_<i>/<sample>.bcf + <sample>.done)."
-        remote_outdir: "Without final slash. Stage outputs go to /03_merge, /04_shard, /05_collapse, /06_concat under here; the genome-wide callset is /06_concat/truvari_collapsed.bcf."
+        remote_indir: "Workflow A's scoring output dir (chunk_<i>/<sample>.bcf + <sample>.done)."
+        remote_outdir: "Stage outputs go to /03_merge, /04_shard, /05_collapse, /06_concat under here; the genome-wide callset is /06_concat/truvari_collapsed.bcf."
         merge_mode: "1: bcftools merge by CHROM,POS,REF,ALT (default for the main chain). 2: merge by ID."
         sample_ids_file: "OPTIONAL. If omitted, the cohort sample list (and thus the bcftools-merge column order) is auto-derived from the <sample>.done markers in remote_indir."
         chunk_ids_per_file: "Truvari chunk ids per WP5 VM (replaces make_workpackage7_chunk_id_files.sh split size)."
     }
 
-    String merge_dir = remote_outdir + "/03_merge"
-    String shard_dir = remote_outdir + "/04_shard"
-    String collapse_dir = remote_outdir + "/05_collapse"
-    String concat_dir = remote_outdir + "/06_concat"
+    String indir = sub(remote_indir, "/+$", "")
+    String outdir = sub(remote_outdir, "/+$", "")
+    String merge_dir = outdir + "/03_merge"
+    String shard_dir = outdir + "/04_shard"
+    String collapse_dir = outdir + "/05_collapse"
+    String concat_dir = outdir + "/06_concat"
 
     Int n_chunks = length(read_lines(split_for_bcftools_merge_csv))
 
@@ -59,7 +61,7 @@ workflow SV_Integration_WorkflowB_Merge_Collapse {
     if (!defined(sample_ids_file)) {
         call WriteSampleList {
             input:
-                remote_indir = remote_indir,
+                remote_indir = indir,
                 docker_image = docker_image
         }
     }
@@ -71,7 +73,7 @@ workflow SV_Integration_WorkflowB_Merge_Collapse {
             input:
                 chunk_id = chunk_id,
                 sample_ids = sample_ids,
-                remote_indir = remote_indir,
+                remote_indir = indir,
                 merge_mode = merge_mode,
                 remote_outdir = merge_dir,
                 docker_image = docker_image

@@ -16,7 +16,7 @@ workflow SV_Integration_Workpackage1 {
         String requester_pays_project = ""
         
         Int min_sv_length = 20
-        Int max_sv_length = 10000
+        Int max_sv_length = 2000
         String kanpig_params_singlesample = "--neighdist 1000 --gpenalty 0.02 --hapsim 0.9999 --sizesim 0.90 --seqsim 0.85 --maxpaths 10000"
         Int ultralong_collapse_mode = 0
         
