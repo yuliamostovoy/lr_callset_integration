@@ -65,22 +65,22 @@ covering the cohort). Bind these columns (names are whatever your table uses):
 | `sniffles_tbis` / `sniffles_vcfs` | `this.03_sniffles_tbi` / `this.03_sniffles_vcf` |
 | `pav_beds` / `pav_tbis` / `pav_vcfs` | `this.03_pav_bed` / `this.03_pav_tbi` / `this.03_pav_vcf` (only if `has_pav=true`) |
 
-Set `intrasample_remote_outdir` (WP1 per-sample outputs) and
-`scoring_remote_outdir` (WP2 scored chunks; consumed by B). `MakeManifests`
-rebuilds the exact per-sample TSV the containers expect — its paste order is fixed
-in the WDL and matches the container `cut` positions; you only pick which table
-column feeds each input.
+Set one `remote_outdir`; A writes WP1 per-sample outputs to `<remote_outdir>/01_intrasample`
+(consumed by D) and WP2 scored chunks to `<remote_outdir>/02_scoring` (consumed by
+B). `MakeManifests` rebuilds the exact per-sample TSV the containers expect — its
+paste order is fixed in the WDL and matches the container `cut` positions; you only
+pick which table column feeds each input.
 
 ## Step B — WorkflowB_Merge_Collapse (cohort, no table)
 
-`remote_indir` = A's `scoring_remote_outdir`; `remote_outdir` = a fresh dir (stages
-land in `/03_merge`, `/04_shard`, `/05_collapse`, `/06_concat`). The genome-wide
+`remote_indir` = A's `<remote_outdir>/02_scoring`; `remote_outdir` = a fresh dir
+(stages land in `/03_merge`, `/04_shard`, `/05_collapse`, `/06_concat`). The genome-wide
 callset is `<remote_outdir>/06_concat/truvari_collapsed.bcf`. `merge_mode=1` for the
 main chain. `sample_ids_file` is optional (auto-derived from A's `.done` markers).
 
 ## Step D — WorkflowD_Ultralong_Bnd (cohort, no table)
 
-`remote_indir` = A's `intrasample_remote_outdir` (holds `<sample>_ultralong.bcf`
+`remote_indir` = A's `<remote_outdir>/01_intrasample` (holds `<sample>_ultralong.bcf`
 and `<sample>_bnd.bcf`). Runs both suffixes in one submission; per-suffix callset is
 `<remote_outdir>/<suffix>/15_concat/truvari_collapsed.bcf`. No annotation, no scoring.
 

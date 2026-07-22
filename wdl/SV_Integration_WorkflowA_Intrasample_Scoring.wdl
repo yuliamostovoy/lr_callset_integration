@@ -35,9 +35,8 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
         Boolean has_pav = true
         Int batch_size = 20
 
-        # --- GCS output dirs (no final slash) ---
-        String intrasample_remote_outdir
-        String scoring_remote_outdir
+        # --- GCS output dir (no final slash); subdirs are derived below ---
+        String remote_outdir
 
         # --- WP1 parameters ---
         String region = "all"
@@ -81,11 +80,13 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
         pav_vcfs: "e.g. `this.03_pav_vcf`. Required only when has_pav=true."
         has_pav: "true: 11-column manifest incl. PAV. false: 8-column manifest (pbsv+sniffles only)."
         batch_size: "Number of samples processed sequentially per VM."
-        intrasample_remote_outdir: "Without final slash. WP1 per-sample outputs (kanpig/training/bnd/ultralong) land here; WP2 reads its input from here."
-        scoring_remote_outdir: "Without final slash. WP2 writes chunk_<i>/<sample>.bcf and <sample>.done here; consumed by Workflow B."
+        remote_outdir: "Without final slash. WP1 per-sample outputs go to /01_intrasample (consumed by Workflow D); WP2 scored chunks + <sample>.done go to /02_scoring (consumed by Workflow B)."
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file the merge/collapse stages use."
         training_resource_bed: "Shared by WP1 and WP2."
     }
+
+    String intrasample_dir = remote_outdir + "/01_intrasample"
+    String scoring_dir = remote_outdir + "/02_scoring"
 
     call MakeManifests {
         input:
@@ -111,7 +112,7 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
                 sv_integration_chunk_tsv = manifest,
                 has_pav = has_pav,
                 region = region,
-                remote_outdir = intrasample_remote_outdir,
+                remote_outdir = intrasample_dir,
                 requester_pays_project = requester_pays_project,
                 min_sv_length = min_sv_length,
                 max_sv_length = max_sv_length,
@@ -134,8 +135,8 @@ workflow SV_Integration_WorkflowA_Intrasample_Scoring {
                 sv_integration_chunk_tsv = manifest,
                 split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
                 filter_string = filter_string,
-                remote_indir = intrasample_remote_outdir,
-                remote_outdir = scoring_remote_outdir,
+                remote_indir = intrasample_dir,
+                remote_outdir = scoring_dir,
                 training_resource_bed = training_resource_bed,
                 annotations = annotations,
                 training_python_script = training_python_script,
