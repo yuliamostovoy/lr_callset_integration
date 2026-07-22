@@ -176,7 +176,7 @@ task Impl {
             local N_LIST_FILES=$(ls list_* | wc -l)
             local LIST_FILE
             for LIST_FILE in $(ls list_* | sort -V); do
-                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --merge ${MERGE_FLAG} --file-list ${LIST_FILE} --output-type b --output ${LIST_FILE}_merged.bcf
+                ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --force-single --merge ${MERGE_FLAG} --file-list ${LIST_FILE} --output-type b --output ${LIST_FILE}_merged.bcf
                 ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ${LIST_FILE}_merged.bcf
                 df -h 1>&2
                 xargs --arg-file=${LIST_FILE} --max-lines=1 --max-procs=${N_THREADS} rm -f
@@ -190,7 +190,9 @@ task Impl {
             
             # Step 2
             ls list_*.bcf | sort -V > list.txt
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --merge ${MERGE_FLAG} --file-list list.txt --output-type b --output ~{chunk_id}_merged.bcf
+            # --force-single lets the merge proceed when there is only one file
+            # (small cohorts / single-family regenotyping produce a single batch).
+            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --force-single --merge ${MERGE_FLAG} --file-list list.txt --output-type b --output ~{chunk_id}_merged.bcf
             ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ~{chunk_id}_merged.bcf
             df -h 1>&2
             xargs --arg-file=list.txt --max-lines=1 --max-procs=${N_THREADS} rm -f

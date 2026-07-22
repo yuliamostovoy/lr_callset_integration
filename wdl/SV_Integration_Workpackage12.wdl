@@ -171,7 +171,7 @@ END
         split -l ~{n_files_per_merge} -d -a 4 list.txt list_
         N_LIST_FILES=$(ls list_* | wc -l)
         for LIST_FILE in $(ls list_* | sort -V); do
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --merge none --file-list ${LIST_FILE} --output-type b --output ${LIST_FILE}_merged.bcf
+            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --force-single --merge none --file-list ${LIST_FILE} --output-type b --output ${LIST_FILE}_merged.bcf
             ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ${LIST_FILE}_merged.bcf
             xargs --arg-file=${LIST_FILE} --max-lines=1 --max-procs=${N_THREADS} rm -f
             rm -f ${LIST_FILE}
@@ -187,7 +187,9 @@ END
         rm -f files_list.txt
         while read -u 4 CHROMOSOME; do
             ls ./${CHROMOSOME}/*.bcf | sort -V > list.txt
-            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --merge none --file-list list.txt --output-type b --output ./${CHROMOSOME}/merged.bcf
+            # --force-single lets the merge proceed when there is only one file
+            # (small cohorts produce a single batch per chromosome).
+            ${TIME_COMMAND} bcftools merge --threads ${N_THREADS} --force-samples --force-single --merge none --file-list list.txt --output-type b --output ./${CHROMOSOME}/merged.bcf
             ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ./${CHROMOSOME}/merged.bcf
             ${TIME_COMMAND} bcftools norm --threads ${N_THREADS} --do-not-normalize --multiallelics -any --output-type b ./${CHROMOSOME}/merged.bcf --output ./${CHROMOSOME}/normed.bcf
             ${TIME_COMMAND} bcftools index --threads ${N_THREADS} -f ./${CHROMOSOME}/normed.bcf
