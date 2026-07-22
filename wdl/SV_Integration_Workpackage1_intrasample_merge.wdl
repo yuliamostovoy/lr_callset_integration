@@ -448,7 +448,12 @@ task Impl {
             # REMOVING THIS - we don't want to keep these variants
             #${TIME_COMMAND} bcftools +setGT --output-type z --output ${SAMPLE_ID}_${CALLER_ID}_out.vcf.gz ${SAMPLE_ID}_${CALLER_ID}_in.vcf -- --target-gt q --include 'GT="ref" || GT="mis"' --new-gt c:0/1
             #rm -f ${SAMPLE_ID}_${CALLER_ID}_in.vcf ; mv ${SAMPLE_ID}_${CALLER_ID}_out.vcf.gz ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz
-            
+
+            # Step 2.4 (setGT) above used to compress+index _in.vcf into
+            # _in.vcf.gz; with it removed, bgzip+index the plain VCF here so the
+            # rename below (and the indexed .vcf.gz that bcftools merge needs)
+            # still works.
+            bgzip ${SAMPLE_ID}_${CALLER_ID}_in.vcf ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz
             mv ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz ${SAMPLE_ID}_${CALLER_ID}_bnd.vcf.gz
             mv ${SAMPLE_ID}_${CALLER_ID}_in.vcf.gz.tbi ${SAMPLE_ID}_${CALLER_ID}_bnd.vcf.gz.tbi
             
@@ -811,6 +816,27 @@ task Impl {
         }
         
         
+        # Kanpig writes a genotype-level FORMAT/FT with integer values (0, 1, ...).
+        # FT is a reserved per-sample genotype-filter key, so htsjdk/GATK (used by
+        # the XGBoost scoring in the next workpackage) reject values like "0" as
+        # invalid filter names. Rename FT -> FTK (values preserved, no longer
+        # treated as a genotype filter) so every downstream tool parses cleanly.
+        # Same operation as utils/FixKanpigFT.wdl. No-op if FT is absent.
+        #
+        function FixKanpigFT() {
+            local SAMPLE_ID=$1
+
+            bcftools view --header-only ${SAMPLE_ID}_kanpig.vcf.gz > ${SAMPLE_ID}_ft_header.txt
+            if grep -q '^##FORMAT=<ID=FT,' ${SAMPLE_ID}_ft_header.txt; then
+                printf 'FORMAT/FT\tFTK\n' > ${SAMPLE_ID}_ft_rename.txt
+                ${TIME_COMMAND} bcftools annotate --threads ${N_THREADS} --rename-annots ${SAMPLE_ID}_ft_rename.txt --output-type z ${SAMPLE_ID}_kanpig.vcf.gz --output ${SAMPLE_ID}_ftfix.vcf.gz
+                rm -f ${SAMPLE_ID}_kanpig.vcf.gz* ; mv ${SAMPLE_ID}_ftfix.vcf.gz ${SAMPLE_ID}_kanpig.vcf.gz ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_kanpig.vcf.gz
+                rm -f ${SAMPLE_ID}_ft_rename.txt
+            fi
+            rm -f ${SAMPLE_ID}_ft_header.txt
+        }
+
+
         cat << 'END' > truvari_bench.sh
 #!/bin/bash
 SAMPLE_ID=$1
@@ -901,6 +927,7 @@ END
             CopySuppToInfo ${SAMPLE_ID} ${SAMPLE_ID}_sv.vcf.gz z ${SAMPLE_ID}_sv_supp.vcf.gz
             Kanpig ${SAMPLE_ID} ${SEX} ${SAMPLE_ID}_sv_supp.vcf.gz ${SAMPLE_ID}_aligned.bam
             CopyKanpigFieldsToInfo ${SAMPLE_ID} ${SAMPLE_ID}_kanpig.vcf.gz
+            FixKanpigFT ${SAMPLE_ID}
             GetTrainingRecords ${SAMPLE_ID} ${SAMPLE_ID}_kanpig.vcf.gz
             
             # Copying SUPP fields to INFO in the BND and ultralong VCFs as well,

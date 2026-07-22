@@ -227,6 +227,26 @@ task Impl {
         }
         
         
+        # Kanpig writes a genotype-level FORMAT/FT with integer values (0, 1, ...).
+        # FT is a reserved per-sample genotype-filter key, so htsjdk/GATK (and other
+        # strict parsers used on the final callset) reject values like "0" as invalid
+        # filter names. Rename FT -> FTK (values preserved) so downstream tools parse
+        # cleanly. Same operation as utils/FixKanpigFT.wdl. No-op if FT is absent.
+        #
+        function FixKanpigFT() {
+            local SAMPLE_ID=$1
+
+            bcftools view --header-only ${SAMPLE_ID}_kanpig.vcf.gz > ${SAMPLE_ID}_ft_header.txt
+            if grep -q '^##FORMAT=<ID=FT,' ${SAMPLE_ID}_ft_header.txt; then
+                printf 'FORMAT/FT\tFTK\n' > ${SAMPLE_ID}_ft_rename.txt
+                ${TIME_COMMAND} bcftools annotate --threads ${N_THREADS} --rename-annots ${SAMPLE_ID}_ft_rename.txt --output-type z ${SAMPLE_ID}_kanpig.vcf.gz --output ${SAMPLE_ID}_ftfix.vcf.gz
+                rm -f ${SAMPLE_ID}_kanpig.vcf.gz* ; mv ${SAMPLE_ID}_ftfix.vcf.gz ${SAMPLE_ID}_kanpig.vcf.gz ; bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_kanpig.vcf.gz
+                rm -f ${SAMPLE_ID}_ft_rename.txt
+            fi
+            rm -f ${SAMPLE_ID}_ft_header.txt
+        }
+
+
         function ChunkAndUpload() {
             local SAMPLE_ID=$1
             
@@ -300,6 +320,7 @@ EOF_FAMILY_IDS
                 SEX=$(echo "${LINE}" | cut -f 2)
                 LocalizeSample ${SAMPLE_ID} "${LINE}"
                 Kanpig ${FAMILY_ID} ${SAMPLE_ID} ${SEX}
+                FixKanpigFT ${SAMPLE_ID}
                 ChunkAndUpload ${SAMPLE_ID}
                 
                 touch ${SAMPLE_ID}.done
