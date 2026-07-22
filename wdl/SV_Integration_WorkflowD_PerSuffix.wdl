@@ -42,7 +42,6 @@ workflow SV_Integration_WorkflowD_PerSuffix {
         n_expected_samples: "OPTIONAL. Auto-derived from the remote_indir listing when omitted."
     }
 
-    String chromosomes_str = "~{sep=',' chromosomes}"
     String merge_dir = remote_outdir_suffix + "/12_merge"
     String shard_dir = remote_outdir_suffix + "/13_shard"
     String collapse_dir = remote_outdir_suffix + "/14_collapse"
@@ -60,7 +59,7 @@ workflow SV_Integration_WorkflowD_PerSuffix {
         input:
             sample_ids = WriteSampleListSuffix.sample_ids_file,
             suffix = suffix,
-            chromosomes = chromosomes_str,
+            chromosomes = chromosomes,
             remote_indir = remote_indir,
             n_expected_samples = n_samples,
             remote_outdir = merge_dir,

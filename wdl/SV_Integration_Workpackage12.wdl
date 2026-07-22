@@ -9,7 +9,7 @@ workflow SV_Integration_Workpackage12 {
     input {
         File sample_ids
         String suffix = "ultralong"
-        String chromosomes = "chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY"
+        Array[String] chromosomes = ["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"]
         
         String remote_indir
         Int n_expected_samples
@@ -59,8 +59,8 @@ task Impl {
     input {
         File sample_ids
         String suffix
-        String chromosomes
-        
+        Array[String] chromosomes
+
         String remote_indir
         Int n_expected_samples
         
@@ -153,7 +153,7 @@ END
         
         # ---------------------------- Main program ----------------------------
         
-        echo ~{chromosomes} | tr ',' '\n' > chromosomes.txt
+        cat ~{write_lines(chromosomes)} > chromosomes.txt
         LocalizeFiles
         
         # Trivial "hierarchical" bcftools merge with just two steps.
