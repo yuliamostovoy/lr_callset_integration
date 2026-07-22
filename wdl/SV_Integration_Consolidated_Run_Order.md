@@ -89,8 +89,9 @@ and `<sample>_bnd.bcf`). Runs both suffixes in one submission; per-suffix callse
 Build one Terra `sample_set` per family/group to joint-genotype (from your PED),
 then launch Step C on the selected sets — Terra runs one workflow copy per set.
 Bind `family_id`=`this.sample_set_id`, and `this.samples.sample_id / sample_sex /
-aligned_bai / aligned_bam`. `wp6_remote_indir` = B's `/06_concat`. The final
-regenotyped BCF is `<remote_outdir>/08_concat/merged.bcf`. The WP3 per-chunk merge
+aligned_bai / aligned_bam`. `remote_indir` = B's remote_outdir (C reads its
+`/06_concat` subdir automatically). The final regenotyped BCF is
+`<remote_outdir>/08_concat/merged.bcf`. The WP3 per-chunk merge
 (merge_mode=2) between WP7 and WP8 is wired in automatically.
 
 ## Idempotency

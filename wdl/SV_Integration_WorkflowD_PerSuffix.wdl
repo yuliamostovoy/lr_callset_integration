@@ -17,8 +17,7 @@ workflow SV_Integration_WorkflowD_PerSuffix {
         String remote_indir
         String remote_outdir_suffix
 
-        String chromosomes = "chr1,chr2,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr20,chr21,chr22,chrX,chrY"
-        Array[String] chromosomes_array = ["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"]
+        Array[String] chromosomes = ["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"]
         Int? n_expected_samples
 
         Int truvari_chunk_min_records = 2000
@@ -43,6 +42,7 @@ workflow SV_Integration_WorkflowD_PerSuffix {
         n_expected_samples: "OPTIONAL. Auto-derived from the remote_indir listing when omitted."
     }
 
+    String chromosomes_str = "~{sep=',' chromosomes}"
     String merge_dir = remote_outdir_suffix + "/12_merge"
     String shard_dir = remote_outdir_suffix + "/13_shard"
     String collapse_dir = remote_outdir_suffix + "/14_collapse"
@@ -60,14 +60,14 @@ workflow SV_Integration_WorkflowD_PerSuffix {
         input:
             sample_ids = WriteSampleListSuffix.sample_ids_file,
             suffix = suffix,
-            chromosomes = chromosomes,
+            chromosomes = chromosomes_str,
             remote_indir = remote_indir,
             n_expected_samples = n_samples,
             remote_outdir = merge_dir,
             docker_image = docker_image
     }
 
-    scatter (chr in chromosomes_array) {
+    scatter (chr in chromosomes) {
         call wp13.Impl as Shard {
             input:
                 chromosome_id = chr,
@@ -113,7 +113,7 @@ workflow SV_Integration_WorkflowD_PerSuffix {
 
     call wp15.AllChromosomes {
         input:
-            chromosomes = chromosomes_array,
+            chromosomes = chromosomes,
             out_txt = SingleChromosome.out_txt,
             remote_outdir = concat_dir,
             naive = concat_all_naive,

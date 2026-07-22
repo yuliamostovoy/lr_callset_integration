@@ -41,14 +41,16 @@ workflow SV_Integration_WorkflowB_Merge_Collapse {
     }
     parameter_meta {
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file Workflow A used."
-        remote_indir: "Workflow A's scoring output dir (chunk_<i>/<sample>.bcf + <sample>.done)."
+        remote_indir: "Workflow A's remote_outdir (this workflow reads its /02_scoring subdir automatically)."
         remote_outdir: "Stage outputs go to /03_merge, /04_shard, /05_collapse, /06_concat under here; the genome-wide callset is /06_concat/truvari_collapsed.bcf."
         merge_mode: "1: bcftools merge by CHROM,POS,REF,ALT (default for the main chain). 2: merge by ID."
         sample_ids_file: "OPTIONAL. If omitted, the cohort sample list (and thus the bcftools-merge column order) is auto-derived from the <sample>.done markers in remote_indir."
         chunk_ids_per_file: "Truvari chunk ids per WP5 VM (replaces make_workpackage7_chunk_id_files.sh split size)."
     }
 
-    String indir = sub(remote_indir, "/+$", "")
+    # Workflow A writes its scored per-sample chunks to the fixed /02_scoring
+    # subdir of its remote_outdir, so the user passes A's remote_outdir here.
+    String indir = sub(remote_indir, "/+$", "") + "/02_scoring"
     String outdir = sub(remote_outdir, "/+$", "")
     String merge_dir = outdir + "/03_merge"
     String shard_dir = outdir + "/04_shard"

@@ -32,7 +32,7 @@ workflow SV_Integration_WorkflowC_Regenotype {
         File split_for_bcftools_merge_csv
 
         # --- GCS dirs (no final slash) ---
-        String wp6_remote_indir
+        String remote_indir
         String remote_outdir
 
         String requester_pays_project = ""
@@ -51,11 +51,13 @@ workflow SV_Integration_WorkflowC_Regenotype {
         aligned_bais: "e.g. `this.samples.aligned_bai` (gs:// URI)."
         aligned_bams: "e.g. `this.samples.aligned_bam` (gs:// URI)."
         split_for_bcftools_merge_csv: "The interval partition CSV; chunk id == 0-based line number. Same file the rest of the pipeline used."
-        wp6_remote_indir: "Workflow B's /06_concat dir holding the genome-wide truvari_collapsed.bcf(.csi)."
+        remote_indir: "Workflow B's remote_outdir (this workflow reads its /06_concat subdir, holding the genome-wide truvari_collapsed.bcf, automatically)."
         remote_outdir: "Outputs go to /07_regenotype (per-sample chunks), /07b_merge (per-chunk merged), /08_concat (final merged.bcf) under here."
     }
 
-    String wp6_indir = sub(wp6_remote_indir, "/+$", "")
+    # Workflow B writes the genome-wide cohort callset to the fixed /06_concat
+    # subdir of its remote_outdir, so the user passes B's remote_outdir here.
+    String cohort_indir = sub(remote_indir, "/+$", "") + "/06_concat"
     String outdir = sub(remote_outdir, "/+$", "")
     String regeno_dir = outdir + "/07_regenotype"
     String merge_dir = outdir + "/07b_merge"
@@ -80,7 +82,7 @@ workflow SV_Integration_WorkflowC_Regenotype {
             aligned_bais = aligned_bais,
             aligned_bams = aligned_bams,
             split_for_bcftools_merge_csv = split_for_bcftools_merge_csv,
-            remote_indir = wp6_indir,
+            remote_indir = cohort_indir,
             remote_outdir = regeno_dir,
             requester_pays_project = requester_pays_project,
             reference_fa = reference_fa,
