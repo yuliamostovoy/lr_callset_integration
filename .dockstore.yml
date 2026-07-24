@@ -250,3 +250,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_WorkflowD_Ultralong_Bnd.wdl
   testParameterFiles:
+- name: SV_Integration_WorkflowD_Cutefc_Test
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowD_Cutefc_Test.wdl
+  testParameterFiles:

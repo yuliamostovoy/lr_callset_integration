@@ -214,9 +214,13 @@ task AllChromosomes {
         
         # Uploading
         gcloud storage mv truvari_collapsed.'bcf*' ~{remote_outdir}/
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > allchr.signal
     >>>
 
     output {
+        String done = read_string("allchr.signal")
     }
     runtime {
         docker: docker_image

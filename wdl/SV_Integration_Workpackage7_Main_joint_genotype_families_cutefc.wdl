@@ -97,9 +97,11 @@ task Impl {
         Int ram_size_gb = 8
         Int disk_size_gb = 100
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
         disk_size_gb: "Increase for large family batches or large BAMs."
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
 
     String docker_dir = "/callset_integration"
@@ -312,9 +314,13 @@ EOF_FAMILY_IDS
             gcloud storage cp ${FAMILY_ID}_family.csv ~{remote_outdir}/
             rm -f ${FAMILY_ID}.samples.txt ${FAMILY_ID}_present.vcf.gz* ${FAMILY_ID}_family.csv
         done 3< family_ids.txt
+
+        # Completion signal for orchestrator ordering. Ignored standalone.
+        echo "done" > wp7cutefc.signal
     >>>
 
     output {
+        String done = read_string("wp7cutefc.signal")
     }
     runtime {
         docker: docker_image

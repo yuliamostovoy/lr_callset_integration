@@ -120,6 +120,11 @@ workflow SV_Integration_WorkflowD_PerSuffix {
     }
 
     output {
+        # Completion signal + the genome-wide cohort callset location, so a
+        # downstream stage (e.g. cuteFC regenotyping) can order after this and
+        # know where to read the cohort VCF.
+        String done = AllChromosomes.done
+        String cohort_dir = concat_dir
     }
 }
 
