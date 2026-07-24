@@ -19,6 +19,8 @@ workflow SV_Integration_WorkflowD_Ultralong_Bnd {
         String remote_indir
         String remote_outdir
 
+        String intrasample_subdir = "01_intrasample"
+
         Array[String] chromosomes = ["chr1","chr2","chr3","chr4","chr5","chr6","chr7","chr8","chr9","chr10","chr11","chr12","chr13","chr14","chr15","chr16","chr17","chr18","chr19","chr20","chr21","chr22","chrX","chrY"]
         Int? n_expected_samples
 
@@ -39,16 +41,19 @@ workflow SV_Integration_WorkflowD_Ultralong_Bnd {
     }
     parameter_meta {
         suffixes: "Which per-sample call classes to integrate. Default: both ultralong and bnd."
-        remote_indir: "Workflow A's remote_outdir (this workflow reads its /01_intrasample subdir automatically)."
+        remote_indir: "Workflow A's remote_outdir (this workflow reads its /01_intrasample subdir automatically). For a legacy rerun, point at the dir holding the per-sample <sample>_<suffix>.bcf files directly and set intrasample_subdir=\"\"."
         remote_outdir: "Per suffix, stage outputs go to /<suffix>/{12_merge,13_shard,14_collapse,15_concat}; the genome-wide callset is /<suffix>/15_concat/truvari_collapsed.bcf."
+        intrasample_subdir: "Subdir of remote_indir holding the per-sample <sample>_<suffix>.bcf files. Default '01_intrasample' (Workflow A layout). Set to '' to read them directly from remote_indir (e.g. a legacy standalone-WP1 output dir)."
         chromosomes: "Chromosomes to process, in output order."
         n_expected_samples: "OPTIONAL. Auto-derived per suffix when omitted."
     }
 
-    # Workflow A writes its per-sample ultralong/bnd BCFs to the fixed
-    # /01_intrasample subdir of its remote_outdir, so the user passes A's
-    # remote_outdir here.
-    String indir = sub(remote_indir, "/+$", "") + "/01_intrasample"
+    # Workflow A writes its per-sample ultralong/bnd BCFs to the /01_intrasample
+    # subdir of its remote_outdir (the default), so the user passes A's
+    # remote_outdir here. A legacy standalone-WP1 dir holds them directly, so
+    # intrasample_subdir="" reads remote_indir as-is.
+    String indir_root = sub(remote_indir, "/+$", "")
+    String indir = if intrasample_subdir == "" then indir_root else indir_root + "/" + intrasample_subdir
     String outdir = sub(remote_outdir, "/+$", "")
 
     scatter (suffix in suffixes) {
