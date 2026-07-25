@@ -255,3 +255,8 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_WorkflowD_Cutefc_Test.wdl
   testParameterFiles:
+- name: SV_Integration_WorkflowE_Regenotype_Merge
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowE_Regenotype_Merge.wdl
+  testParameterFiles:

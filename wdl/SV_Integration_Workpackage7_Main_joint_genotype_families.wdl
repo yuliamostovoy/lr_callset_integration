@@ -94,9 +94,11 @@ task Impl {
         Int ram_size_gb = 8
         Int disk_size_gb = 100
         Int preemptible_number = 4
+        Array[String]? upstream_signal
     }
     parameter_meta {
         disk_size_gb: "Increase for large family batches or large BAMs."
+        upstream_signal: "Ordering-only handshake for orchestrator workflows; ignored by standalone runs."
     }
     
     String docker_dir = "/callset_integration"
