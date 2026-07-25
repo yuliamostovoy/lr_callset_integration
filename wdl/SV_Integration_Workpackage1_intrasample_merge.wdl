@@ -190,9 +190,16 @@ task Impl {
             local OFMT=$6
 
             bcftools query --format '%ID\t%REF\t%ALT\n' ${IN} | sort -t $'\t' -k1,1 > refalt_by_id.tsv
-            bgzip -dc ${TSV} | awk 'BEGIN { FS="\t"; OFS="\t"; } NR==FNR { ra[$1]=$2 FS $3; next } { line=$1 FS $2 FS $3 FS ra[$3]; for (k=4; k<=NF; k++) line=line FS $k; print line }' refalt_by_id.tsv - | bgzip > refalt.${TSV}
+            # Always emit REF and ALT as two separate fields (default '.' if an ID
+            # is somehow absent from the map). A collapsed/empty ra[$3] would shift
+            # the columns and can segfault `bcftools annotate` below.
+            bgzip -dc ${TSV} | awk 'BEGIN { FS="\t"; OFS="\t"; } NR==FNR { ra[$1]=$2 FS $3; next } { ref="."; alt="."; if ($3 in ra) { split(ra[$3], a, "\t"); ref=a[1]; alt=a[2]; } line=$1 FS $2 FS $3 FS ref FS alt; for (k=4; k<=NF; k++) line=line FS $k; print line }' refalt_by_id.tsv - | bgzip > refalt.${TSV}
             tabix -@ ${N_THREADS} -f -s1 -b2 -e2 refalt.${TSV}
-            bcftools annotate --threads ${N_THREADS} --annotations refalt.${TSV} --header-lines ${HDR} --columns "${COLS/,~ID,/,~ID,REF,ALT,}" --output-type ${OFMT} ${IN} --output ${OUT}
+            # Single-threaded annotate: `bcftools annotate --threads` with ~ID
+            # matching has been observed to segfault on large inputs (ONT samples).
+            # The annotate core is single-threaded anyway, so --threads only risks
+            # the crash without a speedup.
+            bcftools annotate --annotations refalt.${TSV} --header-lines ${HDR} --columns "${COLS/,~ID,/,~ID,REF,ALT,}" --output-type ${OFMT} ${IN} --output ${OUT}
             rm -f refalt_by_id.tsv refalt.${TSV} refalt.${TSV}.tbi
         }
 
