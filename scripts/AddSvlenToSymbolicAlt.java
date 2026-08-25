@@ -1,5 +1,4 @@
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 import java.io.*;
 
 
@@ -52,6 +51,10 @@ public class AddSvlenToSymbolicAlt {
                 }
                 else if (info.indexOf("SVTYPE=DUP")>=0) { 
                     alt="<DUP-"+svlen+">";
+                    nEdited++;
+                }
+                else if (info.indexOf("SVTYPE=INS")>=0) { 
+                    alt="<INS-"+svlen+">";
                     nEdited++;
                 }
                 else if (info.indexOf("SVTYPE=CNV")>=0) {

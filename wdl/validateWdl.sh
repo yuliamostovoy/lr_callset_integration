@@ -13,8 +13,9 @@ else
     WOMTOOL=("${WOMTOOL_PATH}")
 fi
 
-"${WOMTOOL[@]}" validate -l SV_Integration_UltralongAnnotate.wdl
-"${WOMTOOL[@]}" validate -l SV_Integration_BndAnnotate.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_WorkflowA2_UltralongBnd_AnnotateScore.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_UltralongAndBndAnnotate.wdl
+"${WOMTOOL[@]}" validate -l SV_Integration_Workpackage3_UltralongAndBnd.wdl
 "${WOMTOOL[@]}" validate -l SV_Integration_BndGetTrainingIntervals.wdl
 "${WOMTOOL[@]}" validate -l UltralongAnnotate.wdl
 "${WOMTOOL[@]}" validate -l UltralongRecordsInTrack.wdl

@@ -59,7 +59,7 @@ public class UltralongInsdups2Ins {
                 info=addOrReplaceInfoField(info,"SVTYPE","INS");
                 info=addOrReplaceInfoField(info,"SVLEN",insLen+"");
                 info=addOrReplaceInfoField(info,"END",insPos+"");
-                info+=";INSDUP_POS="+pos+";INSDUP_SVLEN="+svlen;
+                info+=((info.length()>0 && info.charAt(info.length()-1)==';')?"":";")+"INSDUP_POS="+pos+";INSDUP_SVLEN="+svlen;
                 tokens[7]=info;
                 System.out.print(tokens[0]);
                 for (i=1; i<tokens.length; i++) System.out.print("\t"+tokens[i]);
@@ -98,7 +98,8 @@ public class UltralongInsdups2Ins {
         while (p>0 && info.charAt(p-1)!=';');
 		if (p<0) return info+";"+field+"="+newValue;
 		q=info.indexOf(";",p+FIELD_LENGTH);
-        return info.substring(0,p+FIELD_LENGTH)+newValue+(q>=0?info.substring(q):"");
+        if (q>=0) return info.substring(0,p+FIELD_LENGTH)+newValue+info.substring(q);
+        else return info.substring(0,p+FIELD_LENGTH)+newValue;
 	}
 
 
@@ -112,7 +113,8 @@ public class UltralongInsdups2Ins {
         while (p>0 && info.charAt(p-1)!=';');
 		if (p<0) return info;
 		q=info.indexOf(";",p+FIELD_LENGTH);
-        return info.substring(0,p)+(q>=0?info.substring(q+1):"");
+        if (q>=0) return info.substring(0,p)+info.substring(q+1);
+        else return p>0?info.substring(0,p-1):"";
 	}
 
 }

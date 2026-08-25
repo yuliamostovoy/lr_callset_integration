@@ -141,7 +141,7 @@ def compute_size_features(bam_file, ref_file, chrom, start, end, svlen, svtype):
 
         if len(coverage_array) > 0 and sv_length > 0:
             median_cov = np.median(coverage_array)
-            features['depth_mad'] = np.median(np.abs(coverage_array - median_cov))
+            features['depth_mad'] = np.median(np.abs(coverage_array - median_cov)) / sv_coverage if sv_coverage > 0 else np.nan
         else:
             features['depth_mad'] = np.nan
 
@@ -220,7 +220,7 @@ def compute_read_quality_features(bam_file, chrom, start, end, svtype):
                 read_lengths.append(read.query_length)
 
         features['clip_frac'] = clipped_reads / len(sv_reads) if sv_reads else 0
-        features['split_reads'] = split_read_count
+        features['split_reads'] = split_read_count / len(sv_reads) if sv_reads else 0
         features['read_len_med'] = np.median(read_lengths) if read_lengths else np.nan
 
         # strand_bias
@@ -281,7 +281,7 @@ def compute_sequence_context_features(ref_file, chrom, start, end):
                     current_base = base
                     current_count = 1
             max_homopolymer = max(max_homopolymer, current_count)
-            features['homopolymer_max'] = max_homopolymer
+            features['homopolymer_max'] = max_homopolymer / len(sequence)
 
             # lcr_mask
             distinct_bases = len(set(sequence))
