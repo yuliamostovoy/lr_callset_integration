@@ -235,6 +235,11 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_WorkflowA_Intrasample_Scoring.wdl
   testParameterFiles:
+- name: SV_Integration_WorkflowA_UltralongBndOnly
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_WorkflowA_UltralongBndOnly.wdl
+  testParameterFiles:
 - name: SV_Integration_WorkflowA2_UltralongBnd_AnnotateScore
   subclass: wdl
   publish: True
