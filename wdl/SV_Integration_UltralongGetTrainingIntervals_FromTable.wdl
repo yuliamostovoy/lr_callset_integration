@@ -62,6 +62,7 @@ workflow SV_Integration_UltralongGetTrainingIntervals_FromTable {
         input:
             sample_ids = sample_ids,
             dipcall_beds = dipcall_beds,
+            need_bed = match_to_gaps,
             batch_size = batch_size,
             docker_image = docker_image
     }
@@ -96,13 +97,14 @@ workflow SV_Integration_UltralongGetTrainingIntervals_FromTable {
 }
 
 
-# Rebuilds the `ID<TAB>dipcall_bed` samples TSV from the parallel data-table
-# columns, then splits into `batch_size`-row manifests. Empty `dipcall_beds` ->
-# column 2 is a `.` placeholder (ignored unless match_to_gaps=1).
+# Builds the `ID<TAB>dipcall_bed` samples TSV, then splits into batch_size-row
+# manifests. dipcall_bed is used only when need_bed=1 (match_to_gaps); otherwise
+# column 2 is a "." placeholder and dipcall_beds is ignored.
 task MakeManifests {
     input {
         Array[String] sample_ids
         Array[String] dipcall_beds
+        Int need_bed
         Int batch_size
         String docker_image
     }
@@ -111,14 +113,15 @@ task MakeManifests {
         set -euxo pipefail
 
         N_ID=$(wc -l < ~{write_lines(sample_ids)})
-        N_BED=$(wc -l < ~{write_lines(dipcall_beds)})
-        if [ ${N_BED} -eq 0 ]; then
-            awk 'BEGIN { OFS="\t"; } { print $1, "."; }' ~{write_lines(sample_ids)} > all.tsv
-        elif [ ${N_BED} -eq ${N_ID} ]; then
+        if [ ~{need_bed} -eq 1 ]; then
+            N_BED=$(wc -l < ~{write_lines(dipcall_beds)})
+            if [ ${N_BED} -ne ${N_ID} ]; then
+                echo "ERROR: match_to_gaps=1 requires one dipcall_bed per sample (${N_BED} != ${N_ID})." 1>&2
+                exit 1
+            fi
             paste ~{write_lines(sample_ids)} ~{write_lines(dipcall_beds)} > all.tsv
         else
-            echo "ERROR: dipcall_beds has ${N_BED} rows != ${N_ID} sample_ids (pass none, or one per sample)." 1>&2
-            exit 1
+            awk 'BEGIN { OFS="\t"; } { print $1, "."; }' ~{write_lines(sample_ids)} > all.tsv
         fi
 
         split --lines=~{batch_size} --numeric-suffixes=0 --suffix-length=6 all.tsv batch_
