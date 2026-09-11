@@ -39,6 +39,10 @@ workflow SV_Integration_BndAnnotate {
         
         String docker_image = "us.gcr.io/broad-dsp-lrma/fcunial/callset_integration_phase2_ultralong:latest"
         Int preemptible_number = 3
+
+        Int n_cpu = 4
+        Int ram_size_gb = 16
+        Int disk_size_gb = 50
     }
     parameter_meta {
         chunk_tsv: "Format: `ID,mean_coverage,bai,bam`."
@@ -74,9 +78,12 @@ workflow SV_Integration_BndAnnotate {
             gc_content_bed = gc_content_bed,
 
             docker_image = docker_image,
-            preemptible_number = preemptible_number
+            preemptible_number = preemptible_number,
+            n_cpu = n_cpu,
+            ram_size_gb = ram_size_gb,
+            disk_size_gb = disk_size_gb
     }
-    
+
     output {
     }
 }

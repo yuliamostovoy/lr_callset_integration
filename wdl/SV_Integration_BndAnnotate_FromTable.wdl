@@ -53,6 +53,10 @@ workflow SV_Integration_BndAnnotate_FromTable {
 
         String docker_image = "us.gcr.io/broad-dsp-lrma/fcunial/callset_integration_phase2_ultralong:latest"
         Int preemptible_number = 3
+
+        Int n_cpu = 4
+        Int ram_size_gb = 16
+        Int disk_size_gb = 50
     }
     parameter_meta {
         sample_ids: "From the data table, e.g. `this.sample_id`. Parallel to every other per-sample array."
@@ -95,7 +99,10 @@ workflow SV_Integration_BndAnnotate_FromTable {
                 segdup_bed = segdup_bed,
                 gc_content_bed = gc_content_bed,
                 docker_image = docker_image,
-                preemptible_number = preemptible_number
+                preemptible_number = preemptible_number,
+                n_cpu = n_cpu,
+                ram_size_gb = ram_size_gb,
+                disk_size_gb = disk_size_gb
         }
     }
 
