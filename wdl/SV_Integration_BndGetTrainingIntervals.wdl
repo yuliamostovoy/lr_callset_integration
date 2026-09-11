@@ -6,7 +6,12 @@ version 1.0
 workflow SV_Integration_BndGetTrainingIntervals {
     input {
         File samples_tsv
-        Int truvari_bnddist = 1000
+        Int remove_orientations = 1
+
+        Int use_interval_svtypes = 0
+        Int interval_svtypes_min_sv_length = 1000
+
+        Int truvari_bnddist = 500
         
         String remote_indir_query
         String remote_indir_svimasm
@@ -18,11 +23,17 @@ workflow SV_Integration_BndGetTrainingIntervals {
         samples_tsv: "Format: ID, ???"
         remote_indir_query: "Without final slash. Contains per-sample annotated VCFs created by `SV_Integration_BndAnnotate.wdl`."
         remote_indir_svimasm: "Without final slash. Contains per-sample canonized and filtered svim-asm VCFs."
+        interval_svtypes_min_sv_length: "Only simple, non-INS SVs with SVLEN>=this are kept in the truth VCF."
     }
     
     call Impl {
         input:
             samples_tsv = samples_tsv,
+            remove_orientations = remove_orientations,
+
+            use_interval_svtypes = use_interval_svtypes,
+            interval_svtypes_min_sv_length = interval_svtypes_min_sv_length,
+
             truvari_bnddist = truvari_bnddist,
 
             remote_indir_query = remote_indir_query,
@@ -45,6 +56,11 @@ workflow SV_Integration_BndGetTrainingIntervals {
 task Impl {
     input {
         File samples_tsv
+        Int remove_orientations
+
+        Int use_interval_svtypes
+        Int interval_svtypes_min_sv_length
+
         Int truvari_bnddist
         
         String remote_indir_query
@@ -77,7 +93,7 @@ task Impl {
         df -h 1>&2
 
         cat ~{samples_tsv} | tr '\t' ',' > samples.csv
-        while read -u 3 LINE; do
+        while read -u 3 LINE || [ -n "${LINE}" ]; do
             SAMPLE_ID=$(echo ${LINE} | cut -d , -f 1)
             
             # Skipping the sample if it has already been processed
@@ -88,19 +104,57 @@ task Impl {
 
             # Downloading and filtering the truth VCF (skipping the sample if 
             # there is no truth).
+            # Remark: we use both BND calls and ultralong calls from the truth,
+            # since read-derived BNDs may describe breakpoints of variants that 
+            # are too large for read-based callers but that are short enough for
+            # svim-asm.
             TEST=$( gcloud storage ls ~{remote_indir_svimasm}/${SAMPLE_ID}_canonized.vcf.gz || echo "1" )
             if [ "${TEST}" = "1" ]; then
                 rm -rf ${SAMPLE_ID}_*
                 continue
             fi
             gcloud storage cp ~{remote_indir_svimasm}/${SAMPLE_ID}_canonized.vcf.'gz*' .
-            ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include 'SVTYPE="BND"' --output-type z ${SAMPLE_ID}_canonized.vcf.gz --output ${SAMPLE_ID}_svimasm_bnd.vcf.gz
-            bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_svimasm_bnd.vcf.gz
+            ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include 'SVTYPE="BND"' --output-type v ${SAMPLE_ID}_canonized.vcf.gz --output ${SAMPLE_ID}_svimasm_bnd.vcf
+            java -cp ~{docker_dir} BndCanonize ${SAMPLE_ID}_svimasm_bnd.vcf > ${SAMPLE_ID}_svimasm_bnd_canonized.vcf
+            rm -f ${SAMPLE_ID}_svimasm_bnd.vcf
+            if [ ~{remove_orientations} -eq 1 ]; then
+                java -cp ~{docker_dir} BndRemoveOrientations ${SAMPLE_ID}_svimasm_bnd_canonized.vcf | bcftools sort - --output-type z > ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz
+            else
+                bcftools sort --output-type z ${SAMPLE_ID}_svimasm_bnd_canonized.vcf > ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz
+            fi
+            rm -f ${SAMPLE_ID}_svimasm_bnd_canonized.vcf
+            bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz
+            if [ ~{use_interval_svtypes} -eq 1 ]; then
+                ${TIME_COMMAND} bcftools filter --threads ${N_THREADS} --include '(SVTYPE="DEL" || SVTYPE="DUP" || SVTYPE="INV") && ABS(SVLEN)>='~{interval_svtypes_min_sv_length} --output-type z ${SAMPLE_ID}_canonized.vcf.gz --output ${SAMPLE_ID}_svimasm_ultralong.vcf.gz
+                bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_svimasm_ultralong.vcf.gz
+                ${TIME_COMMAND} bcftools concat --allow-overlaps --output-type z ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz ${SAMPLE_ID}_svimasm_ultralong.vcf.gz --output ${SAMPLE_ID}_svimasm.vcf.gz
+                bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_svimasm.vcf.gz
+                rm -f ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz* ${SAMPLE_ID}_svimasm_ultralong.vcf.gz*
+            else
+                mv ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz ${SAMPLE_ID}_svimasm.vcf.gz
+                mv ${SAMPLE_ID}_svimasm_bnd_canonized.vcf.gz.tbi ${SAMPLE_ID}_svimasm.vcf.gz.tbi
+            fi
             rm -f ${SAMPLE_ID}_canonized.vcf.gz*
 
-            # Computing matches of the query VCF
+            # Computing matches between query and truth VCF.
+            # Remarks:
+            # 1. Truvari bench decomposes a simple SV into its BNDs 
+            #    automatically.
+            # 2. We use `--pick multi` since an SV can be decomposed into
+            #    multiple BNDs, in which case it would be matched only to one
+            #    of them by default.
+            # See https://github.com/acenglish/truvari/wiki/bench#cross-representation-matching
             gcloud storage cp ~{remote_indir_query}/${SAMPLE_ID}_bnd.vcf.'gz*' .
-            ${TIME_COMMAND} truvari bench -b ${SAMPLE_ID}_svimasm_bnd.vcf.gz -c ${SAMPLE_ID}_bnd.vcf.gz --bnddist ~{truvari_bnddist} --pick single -o ./${SAMPLE_ID}_truvari/
+            java -cp ~{docker_dir} BndCanonize ${SAMPLE_ID}_bnd.vcf.gz > ${SAMPLE_ID}_bnd_canonized.vcf
+            rm -f ${SAMPLE_ID}_bnd.vcf.gz*
+            if [ ~{remove_orientations} -eq 1 ]; then
+                java -cp ~{docker_dir} BndRemoveOrientations ${SAMPLE_ID}_bnd_canonized.vcf | bcftools sort - --output-type z > ${SAMPLE_ID}_bnd_canonized.vcf.gz
+            else
+                bcftools sort --output-type z ${SAMPLE_ID}_bnd_canonized.vcf > ${SAMPLE_ID}_bnd_canonized.vcf.gz
+            fi
+            rm -f ${SAMPLE_ID}_bnd_canonized.vcf
+            bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_bnd_canonized.vcf.gz
+            ${TIME_COMMAND} truvari bench -b ${SAMPLE_ID}_svimasm.vcf.gz -c ${SAMPLE_ID}_bnd_canonized.vcf.gz --bnddist ~{truvari_bnddist} --pick multi -o ./${SAMPLE_ID}_truvari/
             ${TIME_COMMAND} bcftools sort --output-type z ${SAMPLE_ID}_truvari/tp-comp.vcf.gz --output ${SAMPLE_ID}_bnd_training.vcf.gz
             bcftools index --threads ${N_THREADS} -f -t ${SAMPLE_ID}_bnd_training.vcf.gz
             rm -rf ${SAMPLE_ID}_truvari/
@@ -122,6 +176,5 @@ task Impl {
         memory: ram_size_gb + "GB"
         disks: "local-disk " + disk_size_gb + " HDD"
         preemptible: preemptible_number
-        zones: "us-central1-a us-central1-b us-central1-c us-central1-f"
     }
 }

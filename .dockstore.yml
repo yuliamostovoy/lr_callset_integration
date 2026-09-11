@@ -270,3 +270,55 @@ workflows:
   publish: True
   primaryDescriptorPath: /wdl/SV_Integration_WorkflowE_Regenotype_Merge.wdl
   testParameterFiles:
+# --- Ultralong/BND model TRAINING data-table front-ends (wrappers) ---
+- name: SV_Integration_UltralongBuildTruth_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongBuildTruth_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongAnnotate_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongAnnotate_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_BndAnnotate_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndAnnotate_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongGetTrainingIntervals_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongGetTrainingIntervals_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_BndGetTrainingIntervals_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndGetTrainingIntervals_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_BndGetTrainingIntervalsPrime_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndGetTrainingIntervalsPrime_FromTable.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongMerge_FromTable
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongMerge_FromTable.wdl
+  testParameterFiles:
+# --- Ultralong/BND model TRAINING stages run directly (no data-table wrapper) ---
+- name: SvimAsm
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SvimAsm.wdl
+  testParameterFiles:
+- name: SV_Integration_BndBuildTruth
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_BndBuildTruth.wdl
+  testParameterFiles:
+- name: SV_Integration_UltralongScore
+  subclass: wdl
+  publish: True
+  primaryDescriptorPath: /wdl/SV_Integration_UltralongScore.wdl
+  testParameterFiles:
